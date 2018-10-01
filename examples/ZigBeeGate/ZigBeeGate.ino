@@ -16,6 +16,10 @@
 
 zb_znp zigbee_network;
 
+/* Biến xử lý điều khiển switch */
+uint8_t control_switch_cmd_seq = 0;
+uint16_t control_switch_address = 0;
+
 int zb_znp::zigbee_message_handler(zigbee_msg_t& zigbee_msg) {
 	/* zigbee start debug message */
 	Serial.print("[ZB msg] len: ");
@@ -131,8 +135,16 @@ int zb_znp::zigbee_message_handler(zigbee_msg_t& zigbee_msg) {
 
 		case ZCL_CLUSTER_ID_GEN_ON_OFF:
 			Serial.println("ZCL_CLUSTER_ID_GEN_ON_OFF");
-			uint8_t retGenOnOff = st_af_incoming_msg->payload[st_af_incoming_msg->len - 1];
-			Serial.println(retGenOnOff);
+			uint8_t retGenOnOff;
+			if (st_af_incoming_msg->len > 9) {
+				control_switch_address = st_af_incoming_msg->src_addr;
+				retGenOnOff = st_af_incoming_msg->payload[st_af_incoming_msg->len - 8];
+				Serial.println(retGenOnOff);
+			}
+			else {
+				retGenOnOff = st_af_incoming_msg->payload[st_af_incoming_msg->len - 1];
+				Serial.println(retGenOnOff);
+			}
 			break;
 
 		default:
@@ -197,6 +209,38 @@ void loop() {
 			 * sẽ được nhận ở hàm callback int zb_znp::zigbee_message_handler(zigbee_msg_t& zigbee_msg)
 			 */
 			zigbee_network.set_permit_joining_req(ALL_ROUTER_AND_COORDINATOR, 60, 1);
+		}
+			break;
+
+			/* yêu cầu Toggle công tắc */
+		case '3': {
+			Serial.println("TOOGLE Switch Req !\n");
+			/*
+			 * Frame Control, Transaction Sequence Number, Value control
+			 * Value control -> 0x00: off, 0x01: on, 0x02: toogle
+			*/
+			if (control_switch_address) {
+				uint8_t st_buffer[3] = { /* Frame control */ 0x01,
+										 /* Transaction Sequence Number */0x00,  /* control_switch_cmd_seq++ */
+										 /* Value Control */ 0x02}; /* Value Control [ 0x00:OFF , 0x01:ON , 0x02:TOOGLE ] */
+				st_buffer[1] = control_switch_cmd_seq++;
+
+				af_data_request_t st_af_data_request;
+				st_af_data_request.cluster_id    = ZCL_CLUSTER_ID_PI_GENERIC_TUNNEL;
+				st_af_data_request.dst_address   = control_switch_address;
+				st_af_data_request.dst_endpoint  = 0x01;
+				st_af_data_request.src_endpoint  = 0x01;
+				st_af_data_request.trans_id      = 0x00;
+				st_af_data_request.options       = 0x10;
+				st_af_data_request.radius        = 0x0F;
+				st_af_data_request.len           = sizeof(st_buffer);
+				st_af_data_request.data          = st_buffer;
+
+				zigbee_network.send_af_data_req(st_af_data_request);
+			}
+			else {
+				Serial.println("Please join Switch !\n");
+			}
 		}
 			break;
 
