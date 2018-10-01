@@ -12,7 +12,7 @@
  *
  */
 
-#define DBG_ZB_FARM
+#define DBG_ZB_FRAME
 
 zb_znp zigbee_network;
 
@@ -53,7 +53,7 @@ int zb_znp::zigbee_message_handler(zigbee_msg_t& zigbee_msg) {
 		af_incoming_msg_t* st_af_incoming_msg = (af_incoming_msg_t*)zigbee_msg.data;
 		Serial.println("AF_INCOMING_MSG");
 
-#if defined (DBG_ZB_FARM)
+#if defined (DBG_ZB_FRAME)
 		char buf[9];
 		char buf1[18];
 		Serial.print("group_id: ");
