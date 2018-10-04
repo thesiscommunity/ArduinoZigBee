@@ -749,6 +749,80 @@ uint8_t  zb_znp::start_coordinator(uint8_t opt) {
 	return ZNP_SUCCESS;
 }
 
+uint8_t  zb_znp::start_router() {
+	uint8_t znpResult;
+
+	/* setup uart interface */
+	znp_serial.begin(115200);
+
+	//Serial.print("start_router\n");
+	znpResult = set_startup_options(DEFAULT_STARTUP_OPTIONS);
+	if (znpResult != ZNP_SUCCESS) {
+		//Serial.print("ERROR: startup option. \n");
+		return znpResult;
+	}
+	//	Serial.println("set_startup_options");
+
+	znpResult = soft_reset();
+	if (znpResult == ZNP_NOT_SUCCESS) {
+		//Serial.print("ERROR: reset ZNP \n");
+		return znpResult;
+	}
+	//	Serial.println("soft_reset");
+
+	znpResult = set_zigbee_device_type(ROUTER);
+	if (znpResult != ZNP_SUCCESS) {
+		//Serial.print("ERROR: Device type \n");
+		return znpResult;
+	}
+	//	Serial.println("set_zigbee_device_type");
+
+	znpResult = soft_reset();
+	if (znpResult == ZNP_NOT_SUCCESS) {
+		//Serial.print("ERROR: reset ZNP \n");
+		return znpResult;
+	}
+	//	Serial.println("soft_reset");
+
+	//Set primary channel mask & disable secondary channel mask
+	znpResult = set_channel_mask(CHANNEL_TRUE, (uint32_t) DEFAULT_CHANNEL_MASK);
+	if (znpResult != ZNP_SUCCESS) {
+		//Serial.print("ERROR: set channel mask \n");
+		return znpResult;
+	}
+	//Serial.println("set_channel_mask");
+
+	znpResult = set_channel_mask(CHANNEL_FALSE, (uint32_t) 0);
+	if (znpResult != ZNP_SUCCESS) {
+		//Serial.print("ERROR: set channel mask \n");
+		return znpResult;
+	}
+	//	Serial.println("set_channel_mask");
+
+	for (int i = 1; i < 0x20; i++) {
+		if (i == 0x01 || i == 0x0A) {
+			znpResult = af_register_generic_application(i);
+			if (znpResult != ZNP_SUCCESS) {
+				//Serial.print("ERROR: af register ");
+				//Serial.print(i);
+				//Serial.print("\n");
+				return znpResult;
+			}
+		}
+	}
+
+	//	Serial.println("af_register_generic_application");
+	// Start commissioning using network formation as parameter to start coordinator
+	znpResult = bdb_start_commissioning(COMMISSIONING_MODE_STEERING, 1, 10);		// 0x04 is Network Formation
+	if (znpResult != ZNP_SUCCESS) {
+		Serial.print("ERROR: Network Steering \n");
+		return znpResult;
+	}
+	//	Serial.println("bdb_start_commissioning");
+
+	return ZNP_SUCCESS;
+}
+
 uint8_t zb_znp::bdb_start_commissioning(uint8_t mode_config, uint8_t mode_receiving, uint8_t flag_waiting) {
 	(void)mode_receiving;
 	int8_t i = 0;

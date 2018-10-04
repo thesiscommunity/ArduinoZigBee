@@ -34,7 +34,7 @@
 #define STARTOPT_AUTO					0x04
 
 #define DEFAULT_STARTUP_OPTIONS			(STARTOPT_CLEAR_CONFIG + STARTOPT_CLEAR_STATE)
-#define DEFAULT_CHANNEL_MASK			CHANNEL_MASK_11
+#define DEFAULT_CHANNEL_MASK			CHANNEL_MASK_13
 #define ANY_PAN							0xFFFF
 
 #define DEFAULT_ENDPOINT				0x1
@@ -232,6 +232,9 @@ public:
 	 * to force start coodinator, reset configures to default and clean all joined devices.
 	 */
 	uint8_t start_coordinator(uint8_t opt);
+
+	/* start router sensor node */
+	uint8_t start_router();
 	uint8_t bdb_start_commissioning(uint8_t mode_config, uint8_t mode_receiving, uint8_t flag_waiting = 0);
 	uint8_t util_get_device_info();
 	uint8_t zdo_mgmt_leave_req(uint16_t short_add, uint8_t ieee_addr[8], uint8_t flags);

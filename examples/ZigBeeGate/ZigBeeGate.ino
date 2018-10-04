@@ -244,6 +244,31 @@ void loop() {
 		}
 			break;
 
+			/******************************************************************
+			 *  Ví dụ:
+			 * gửi data từ Gateway(coodinator) đến các thiết bị / cảm biến
+			 * các thông số cần thiết cho quá trình này bao gồm
+			 * 1. short address, là địa chỉ đc coodinator cấp khi thiết bị / cảm biến join vào mạng
+			 * 2. độ dài của mảng data cần truyền
+			 * 3. data
+
+		case 's': {
+			uint8_t st_buffer[10];
+			af_data_request_t st_af_data_request;
+			st_af_data_request.cluster_id    = ZCL_CLUSTER_ID_PI_GENERIC_TUNNEL;
+			st_af_data_request.dst_address   = [ Địa chỉ đích của thiết bị / sensor ] ví du: control_switch_address
+			st_af_data_request.dst_endpoint  = 0x01;
+			st_af_data_request.src_endpoint  = 0x01;
+			st_af_data_request.trans_id      = 0x00;
+			st_af_data_request.options       = 0x10;
+			st_af_data_request.radius        = 0x0F;
+			st_af_data_request.len           = [ Độ dài data cần gửi đi ] ví dụ: sizeof(st_buffer)
+			st_af_data_request.data          = [ data ] ví dụ: st_buffer
+			zigbee_network.send_af_data_req(st_af_data_request);
+		}
+			break;
+			********************************************************************/
+
 		default:
 			break;
 		}
