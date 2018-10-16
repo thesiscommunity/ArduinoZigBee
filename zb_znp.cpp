@@ -6,31 +6,29 @@
 
 #define RX_BUFFER_SIZE		256
 
-SoftwareSerial znp_serial(2, 3);
-
 uint8_t zb_znp::get_sequence_send() {
-	if (sequence_send == 0xFF) {
-		sequence_send = 0;
+	if (m_sequence_send == 0xFF) {
+		m_sequence_send = 0;
 	} else {
-		sequence_send++;
+		m_sequence_send++;
 	}
-	return sequence_send;
+	return m_sequence_send;
 }
 
 int update_read_len;
 uint8_t zb_znp::update() {
-	update_read_len = znp_serial.available();
+	update_read_len = m_znp_stream->available();
 	if (update_read_len) {
 		for (int i = 0; i < update_read_len; i++) {
-			znp_buf[i] = znp_serial.read();
+			m_znp_buf[i] = m_znp_stream->read();
 		}
-		znp_frame_parser(znp_buf, update_read_len);
+		znp_frame_parser(m_znp_buf, update_read_len);
 	}
 }
 
 int zb_znp::write(uint8_t* data, uint32_t len) {
 	for (int i = 0; i < len; i++) {
-		znp_serial.write(*(data + i));
+		m_znp_stream->write(*(data + i));
 	}
 	return len;
 }
@@ -38,14 +36,14 @@ int zb_znp::write(uint8_t* data, uint32_t len) {
 int zb_znp::read(uint8_t* data, uint32_t len) {
 	uint32_t counter = 40; //time out waiting for message is 4s.
 
-	while(znp_serial.available() <= 0) {
+	while(m_znp_stream->available() <= 0) {
 		delay(100);
 		if (counter-- == 0) {
 			break;
 		}
 	}
 
-	int r_len = znp_serial.available();
+	int r_len = m_znp_stream->available();
 	int r_len_sum = 0;
 	int r_c;
 
@@ -55,14 +53,14 @@ int zb_znp::read(uint8_t* data, uint32_t len) {
 
 	while (r_len > 0) {
 		for (int i = r_len_sum; i < (r_len_sum + r_len); i++) {
-			r_c = (int)znp_serial.read();
+			r_c = (int)m_znp_stream->read();
 			if (r_c >= 0) {
 				*(data + i) = (uint8_t)r_c;
 			}
 		}
 
 		r_len_sum += r_len;
-		r_len = znp_serial.available();
+		r_len = m_znp_stream->available();
 	}
 
 	return r_len_sum;
@@ -70,21 +68,21 @@ int zb_znp::read(uint8_t* data, uint32_t len) {
 
 uint8_t zb_znp::set_tc_require_key_exchange(uint8_t bdb_trust_center_require_key_exchange) {
 	int8_t i = 0;
-	znp_buf[i] = ZNP_SOF;
+	m_znp_buf[i] = ZNP_SOF;
 	i++;
-	znp_buf[i] = 0;
+	m_znp_buf[i] = 0;
 	i++;
-	znp_buf[i] = MSB(APP_CNF_BDB_SET_TC_REQUIRE_KEY_EXCHANGE);
+	m_znp_buf[i] = MSB(APP_CNF_BDB_SET_TC_REQUIRE_KEY_EXCHANGE);
 	i++;
-	znp_buf[i] = LSB(APP_CNF_BDB_SET_TC_REQUIRE_KEY_EXCHANGE);
+	m_znp_buf[i] = LSB(APP_CNF_BDB_SET_TC_REQUIRE_KEY_EXCHANGE);
 	i++;
-	znp_buf[i] = bdb_trust_center_require_key_exchange;
+	m_znp_buf[i] = bdb_trust_center_require_key_exchange;
 	i++;
-	znp_buf[1] = i - 4;
-	znp_buf[i] = calc_fcs((uint8_t *) &znp_buf[1], (i - 1));
+	m_znp_buf[1] = i - 4;
+	m_znp_buf[i] = calc_fcs((uint8_t *) &m_znp_buf[1], (i - 1));
 	i++;
 
-	if (write(znp_buf, i) < 0) {
+	if (write(m_znp_buf, i) < 0) {
 		return ZNP_NOT_SUCCESS;
 	}
 
@@ -260,20 +258,20 @@ uint8_t zb_znp::calc_fcs(uint8_t* msg, uint8_t len) {
 
 uint8_t zb_znp::app_cnf_set_allowrejoin_tc_policy(uint8_t mode) {
 	int8_t i = 0;
-	znp_buf[i] = ZNP_SOF;
+	m_znp_buf[i] = ZNP_SOF;
 	i++;
-	znp_buf[i] = 0;
+	m_znp_buf[i] = 0;
 	i++;
-	znp_buf[i] = MSB(APP_CNF_SET_ALLOWREJOIN_TC_POLICY);
+	m_znp_buf[i] = MSB(APP_CNF_SET_ALLOWREJOIN_TC_POLICY);
 	i++;
-	znp_buf[i] = LSB(APP_CNF_SET_ALLOWREJOIN_TC_POLICY);
+	m_znp_buf[i] = LSB(APP_CNF_SET_ALLOWREJOIN_TC_POLICY);
 	i++;
-	znp_buf[i] = mode;
+	m_znp_buf[i] = mode;
 	i++;
-	znp_buf[1] = i - 4;
-	znp_buf[i] = calc_fcs((uint8_t *) &znp_buf[1], (i - 1));
+	m_znp_buf[1] = i - 4;
+	m_znp_buf[i] = calc_fcs((uint8_t *) &m_znp_buf[1], (i - 1));
 	i++;
-	if (write(znp_buf, i) < 0) {
+	if (write(m_znp_buf, i) < 0) {
 		return ZNP_NOT_SUCCESS;
 	}
 
@@ -284,21 +282,21 @@ uint8_t zb_znp::app_cnf_set_allowrejoin_tc_policy(uint8_t mode) {
 #define SOFT_RESET				0x01
 uint8_t zb_znp::soft_reset() {
 	int8_t i = 0;
-	znp_buf[i] = ZNP_SOF;
+	m_znp_buf[i] = ZNP_SOF;
 	i++;
-	znp_buf[i] = 0;
+	m_znp_buf[i] = 0;
 	i++;
-	znp_buf[i] = MSB(SYS_RESET_REQ);
+	m_znp_buf[i] = MSB(SYS_RESET_REQ);
 	i++;
-	znp_buf[i] = LSB(SYS_RESET_REQ);
+	m_znp_buf[i] = LSB(SYS_RESET_REQ);
 	i++;
-	znp_buf[i] = SOFT_RESET;
+	m_znp_buf[i] = SOFT_RESET;
 	i++;
-	znp_buf[1] = i - 4;
-	znp_buf[i] = calc_fcs((uint8_t *) &znp_buf[1], (i - 1));
+	m_znp_buf[1] = i - 4;
+	m_znp_buf[i] = calc_fcs((uint8_t *) &m_znp_buf[1], (i - 1));
 	i++;
 
-	if (write(znp_buf, i) < 0) {
+	if (write(m_znp_buf, i) < 0) {
 		return ZNP_NOT_SUCCESS;
 	}
 	return waiting_for_message(SYS_RESET_IND);
@@ -310,26 +308,26 @@ uint8_t zb_znp::set_startup_options(uint8_t opt) {
 		return ZNP_NOT_SUCCESS;
 	}
 
-	znp_buf[i] = ZNP_SOF;
+	m_znp_buf[i] = ZNP_SOF;
 	i++;
-	znp_buf[i] = 0;
+	m_znp_buf[i] = 0;
 	i++;
-	znp_buf[i] = MSB(ZB_WRITE_CONFIGURATION);
+	m_znp_buf[i] = MSB(ZB_WRITE_CONFIGURATION);
 	i++;
-	znp_buf[i] = LSB(ZB_WRITE_CONFIGURATION);
-	i++;
-
-	znp_buf[i] = ZCD_NV_STARTUP_OPTION;
-	i++;
-	znp_buf[i] = ZCD_NV_STARTUP_OPTION_LEN;
-	i++;
-	znp_buf[i] = opt;
-	i++;
-	znp_buf[1] = i - 4;
-	znp_buf[i] = calc_fcs((uint8_t *) &znp_buf[1], (i - 1));
+	m_znp_buf[i] = LSB(ZB_WRITE_CONFIGURATION);
 	i++;
 
-	if (write(znp_buf, i) < 0) {
+	m_znp_buf[i] = ZCD_NV_STARTUP_OPTION;
+	i++;
+	m_znp_buf[i] = ZCD_NV_STARTUP_OPTION_LEN;
+	i++;
+	m_znp_buf[i] = opt;
+	i++;
+	m_znp_buf[1] = i - 4;
+	m_znp_buf[i] = calc_fcs((uint8_t *) &m_znp_buf[1], (i - 1));
+	i++;
+
+	if (write(m_znp_buf, i) < 0) {
 		return ZNP_NOT_SUCCESS;
 	}
 
@@ -338,26 +336,26 @@ uint8_t zb_znp::set_startup_options(uint8_t opt) {
 
 uint8_t zb_znp::set_panid(uint16_t pan_id) {
 	int8_t i = 0;
-	znp_buf[i] = ZNP_SOF;
+	m_znp_buf[i] = ZNP_SOF;
 	i++;
-	znp_buf[i] = 0;
+	m_znp_buf[i] = 0;
 	i++;
-	znp_buf[i] = MSB(ZB_WRITE_CONFIGURATION);
+	m_znp_buf[i] = MSB(ZB_WRITE_CONFIGURATION);
 	i++;
-	znp_buf[i] = LSB(ZB_WRITE_CONFIGURATION);
+	m_znp_buf[i] = LSB(ZB_WRITE_CONFIGURATION);
 	i++;
-	znp_buf[i] = ZCD_NV_PANID;
+	m_znp_buf[i] = ZCD_NV_PANID;
 	i++;
-	znp_buf[i] = ZCD_NV_PANID_LEN;
+	m_znp_buf[i] = ZCD_NV_PANID_LEN;
 	i++;
-	znp_buf[i] = LSB(pan_id);
+	m_znp_buf[i] = LSB(pan_id);
 	i++;
-	znp_buf[i] = MSB(pan_id);
+	m_znp_buf[i] = MSB(pan_id);
 	i++;
-	znp_buf[1] = i - 4;
-	znp_buf[i] = calc_fcs((uint8_t *) &znp_buf[1], (i - 1));
+	m_znp_buf[1] = i - 4;
+	m_znp_buf[i] = calc_fcs((uint8_t *) &m_znp_buf[1], (i - 1));
 	i++;
-	if (write(znp_buf, i) < 0) {
+	if (write(m_znp_buf, i) < 0) {
 		return ZNP_NOT_SUCCESS;
 	}
 	return waiting_for_message(ZB_WRITE_CONFIGURATION | 0x6000);
@@ -368,25 +366,25 @@ uint8_t zb_znp::set_zigbee_device_type(uint8_t dev_type) {
 	if (dev_type > END_DEVICE) {
 		return ZNP_NOT_SUCCESS;
 	}
-	znp_buf[i] = ZNP_SOF;
+	m_znp_buf[i] = ZNP_SOF;
 	i++;
-	znp_buf[i] = 0;
+	m_znp_buf[i] = 0;
 	i++;
-	znp_buf[i] = MSB(ZB_WRITE_CONFIGURATION);
+	m_znp_buf[i] = MSB(ZB_WRITE_CONFIGURATION);
 	i++;
-	znp_buf[i] = LSB(ZB_WRITE_CONFIGURATION);
+	m_znp_buf[i] = LSB(ZB_WRITE_CONFIGURATION);
 	i++;
 
-	znp_buf[i] = ZCD_NV_LOGICAL_TYPE;
+	m_znp_buf[i] = ZCD_NV_LOGICAL_TYPE;
 	i++;
-	znp_buf[i] = ZCD_NV_LOGICAL_TYPE_LEN;
+	m_znp_buf[i] = ZCD_NV_LOGICAL_TYPE_LEN;
 	i++;
-	znp_buf[i] = dev_type;
+	m_znp_buf[i] = dev_type;
 	i++;
-	znp_buf[1] = i - 4;
-	znp_buf[i] = calc_fcs((uint8_t *) &znp_buf[1], (i - 1));
+	m_znp_buf[1] = i - 4;
+	m_znp_buf[i] = calc_fcs((uint8_t *) &m_znp_buf[1], (i - 1));
 	i++;
-	if (write(znp_buf, i) < 0) {
+	if (write(m_znp_buf, i) < 0) {
 		return ZNP_NOT_SUCCESS;
 	}
 
@@ -395,20 +393,20 @@ uint8_t zb_znp::set_zigbee_device_type(uint8_t dev_type) {
 
 uint8_t zb_znp::set_transmit_power(uint8_t tx_power_db) {
 	uint8_t i = 0;
-	znp_buf[i] = ZNP_SOF;
+	m_znp_buf[i] = ZNP_SOF;
 	i++;
-	znp_buf[i] = 0;
+	m_znp_buf[i] = 0;
 	i++;
-	znp_buf[i] = MSB(SYS_SET_TX_POWER);
+	m_znp_buf[i] = MSB(SYS_SET_TX_POWER);
 	i++;
-	znp_buf[i] = LSB(SYS_SET_TX_POWER);
+	m_znp_buf[i] = LSB(SYS_SET_TX_POWER);
 	i++;
-	znp_buf[i] = tx_power_db;
+	m_znp_buf[i] = tx_power_db;
 	i++;
-	znp_buf[1] = i - 4;
-	znp_buf[i] = calc_fcs((uint8_t *) &znp_buf[1], (i - 1));
+	m_znp_buf[1] = i - 4;
+	m_znp_buf[i] = calc_fcs((uint8_t *) &m_znp_buf[1], (i - 1));
 	i++;
-	if (write(znp_buf, i) < 0) {
+	if (write(m_znp_buf, i) < 0) {
 		return ZNP_NOT_SUCCESS;
 	}
 
@@ -421,30 +419,30 @@ uint8_t zb_znp::set_transmit_power(uint8_t tx_power_db) {
 
 uint8_t zb_znp::set_channel_mask(uint8_t primary, uint32_t channelmask) {
 	int8_t i = 0;
-	znp_buf[i] = ZNP_SOF;
+	m_znp_buf[i] = ZNP_SOF;
 	i++;
-	znp_buf[i] = 0;
+	m_znp_buf[i] = 0;
 	i++;
-	znp_buf[i] = MSB(APP_CNF_BDB_SET_CHANNEL);
+	m_znp_buf[i] = MSB(APP_CNF_BDB_SET_CHANNEL);
 	i++;
-	znp_buf[i] = LSB(APP_CNF_BDB_SET_CHANNEL);
-	i++;
-
-	znp_buf[i] = primary;
-	i++;
-	znp_buf[i] = LSB(channelmask);
-	i++;
-	znp_buf[i] = (channelmask & 0xFF00) >> 8;
-	i++;
-	znp_buf[i] = (channelmask & 0xFF0000) >> 16;
-	i++;
-	znp_buf[i] = channelmask >> 24;
-	i++;
-	znp_buf[1] = i - 4;
-	znp_buf[i] = calc_fcs((uint8_t *) &znp_buf[1], (i - 1));
+	m_znp_buf[i] = LSB(APP_CNF_BDB_SET_CHANNEL);
 	i++;
 
-	if (write(znp_buf, i) < 0) {
+	m_znp_buf[i] = primary;
+	i++;
+	m_znp_buf[i] = LSB(channelmask);
+	i++;
+	m_znp_buf[i] = (channelmask & 0xFF00) >> 8;
+	i++;
+	m_znp_buf[i] = (channelmask & 0xFF0000) >> 16;
+	i++;
+	m_znp_buf[i] = channelmask >> 24;
+	i++;
+	m_znp_buf[1] = i - 4;
+	m_znp_buf[i] = calc_fcs((uint8_t *) &m_znp_buf[1], (i - 1));
+	i++;
+
+	if (write(m_znp_buf, i) < 0) {
 		return ZNP_NOT_SUCCESS;
 	}
 
@@ -453,37 +451,37 @@ uint8_t zb_znp::set_channel_mask(uint8_t primary, uint32_t channelmask) {
 
 uint8_t zb_znp::af_register_generic_application(uint8_t endpoint) {
 	int8_t i = 0;
-	znp_buf[i] = ZNP_SOF;
+	m_znp_buf[i] = ZNP_SOF;
 	i++;
-	znp_buf[i] = 0;
+	m_znp_buf[i] = 0;
 	i++;
-	znp_buf[i] = MSB(AF_REGISTER);
+	m_znp_buf[i] = MSB(AF_REGISTER);
 	i++;
-	znp_buf[i] = LSB(AF_REGISTER);
+	m_znp_buf[i] = LSB(AF_REGISTER);
 	i++;
-	znp_buf[i] = endpoint;
+	m_znp_buf[i] = endpoint;
 	i++;
-	znp_buf[i] = LSB(DEFAULT_PROFILE_ID);
+	m_znp_buf[i] = LSB(DEFAULT_PROFILE_ID);
 	i++;
-	znp_buf[i] = MSB(DEFAULT_PROFILE_ID);
+	m_znp_buf[i] = MSB(DEFAULT_PROFILE_ID);
 	i++;
-	znp_buf[i] = LSB(DEVICE_ID);
+	m_znp_buf[i] = LSB(DEVICE_ID);
 	i++;
-	znp_buf[i] = MSB(DEVICE_ID);
+	m_znp_buf[i] = MSB(DEVICE_ID);
 	i++;
-	znp_buf[i] = DEVICE_VERSION;
+	m_znp_buf[i] = DEVICE_VERSION;
 	i++;
-	znp_buf[i] = LATENCY_NORMAL;
+	m_znp_buf[i] = LATENCY_NORMAL;
 	i++;
-	znp_buf[i] = 0;
+	m_znp_buf[i] = 0;
 	i++;				// number of binding input clusters
-	znp_buf[i] = 0;
+	m_znp_buf[i] = 0;
 	i++;				// number of binding output clusters
-	znp_buf[1] = i - 4;
-	znp_buf[i] = calc_fcs((uint8_t *) &znp_buf[1], (i - 1));
+	m_znp_buf[1] = i - 4;
+	m_znp_buf[i] = calc_fcs((uint8_t *) &m_znp_buf[1], (i - 1));
 	i++;
 
-	if (write(znp_buf, i) < 0) {
+	if (write(m_znp_buf, i) < 0) {
 		return ZNP_NOT_SUCCESS;
 	}
 
@@ -492,38 +490,38 @@ uint8_t zb_znp::af_register_generic_application(uint8_t endpoint) {
 
 uint8_t zb_znp::zb_app_register_request() {
 	int8_t i = 0;
-	znp_buf[i] = ZNP_SOF;
+	m_znp_buf[i] = ZNP_SOF;
 	i++;
-	znp_buf[i] = 0;
+	m_znp_buf[i] = 0;
 	i++;
-	znp_buf[i] = MSB(ZB_APP_REGISTER_REQUEST);
+	m_znp_buf[i] = MSB(ZB_APP_REGISTER_REQUEST);
 	i++;
-	znp_buf[i] = LSB(ZB_APP_REGISTER_REQUEST);
+	m_znp_buf[i] = LSB(ZB_APP_REGISTER_REQUEST);
 	i++;
-	znp_buf[i] = DEFAULT_ENDPOINT;
+	m_znp_buf[i] = DEFAULT_ENDPOINT;
 	i++;
-	znp_buf[i] = LSB(DEFAULT_PROFILE_ID);
+	m_znp_buf[i] = LSB(DEFAULT_PROFILE_ID);
 	i++;
-	znp_buf[i] = MSB(DEFAULT_PROFILE_ID);
+	m_znp_buf[i] = MSB(DEFAULT_PROFILE_ID);
 	i++;
-	znp_buf[i] = LSB(DEVICE_ID);
+	m_znp_buf[i] = LSB(DEVICE_ID);
 	i++;
-	znp_buf[i] = MSB(DEVICE_ID);
+	m_znp_buf[i] = MSB(DEVICE_ID);
 	i++;
-	znp_buf[i] = DEVICE_VERSION;
+	m_znp_buf[i] = DEVICE_VERSION;
 	i++;
-	znp_buf[i] = LATENCY_NORMAL;
+	m_znp_buf[i] = LATENCY_NORMAL;
 	i++;
-	znp_buf[i] = 0;
+	m_znp_buf[i] = 0;
 	i++;				// number of binding input clusters
-	znp_buf[i] = 0;
+	m_znp_buf[i] = 0;
 	i++;				// number of binding output clusters
 
-	znp_buf[1] = i - 4;
-	znp_buf[i] = calc_fcs((uint8_t *) &znp_buf[1], (i - 1));
+	m_znp_buf[1] = i - 4;
+	m_znp_buf[i] = calc_fcs((uint8_t *) &m_znp_buf[1], (i - 1));
 	i++;
 
-	if (write(znp_buf, i) < 0) {
+	if (write(m_znp_buf, i) < 0) {
 		return ZNP_NOT_SUCCESS;
 	}
 
@@ -532,19 +530,19 @@ uint8_t zb_znp::zb_app_register_request() {
 
 uint8_t zb_znp::zb_start_request() {
 	int8_t i = 0;
-	znp_buf[i] = ZNP_SOF;
+	m_znp_buf[i] = ZNP_SOF;
 	i++;
-	znp_buf[i] = 0;
+	m_znp_buf[i] = 0;
 	i++;
-	znp_buf[i] = MSB(ZB_START_REQUEST);
+	m_znp_buf[i] = MSB(ZB_START_REQUEST);
 	i++;
-	znp_buf[i] = LSB(ZB_START_REQUEST);
+	m_znp_buf[i] = LSB(ZB_START_REQUEST);
 	i++;
-	znp_buf[1] = i - 4;
-	znp_buf[i] = calc_fcs((uint8_t *) &znp_buf[1], (i - 1));
+	m_znp_buf[1] = i - 4;
+	m_znp_buf[i] = calc_fcs((uint8_t *) &m_znp_buf[1], (i - 1));
 	i++;
 
-	if (write(znp_buf, i) < 0) {
+	if (write(m_znp_buf, i) < 0) {
 		return ZNP_NOT_SUCCESS;
 	}
 
@@ -553,21 +551,21 @@ uint8_t zb_znp::zb_start_request() {
 
 uint8_t zb_znp::zdo_start_application() {
 	int8_t i = 0;
-	znp_buf[i] = ZNP_SOF;
+	m_znp_buf[i] = ZNP_SOF;
 	i++;
-	znp_buf[i] = 0;
+	m_znp_buf[i] = 0;
 	i++;
-	znp_buf[i] = MSB(ZDO_STARTUP_FROM_APP);
+	m_znp_buf[i] = MSB(ZDO_STARTUP_FROM_APP);
 	i++;
-	znp_buf[i] = LSB(ZDO_STARTUP_FROM_APP);
+	m_znp_buf[i] = LSB(ZDO_STARTUP_FROM_APP);
 	i++;
-	znp_buf[i] = 0;
+	m_znp_buf[i] = 0;
 	i++;
-	znp_buf[1] = i - 4;
-	znp_buf[i] = calc_fcs((uint8_t *) &znp_buf[1], (i - 1));
+	m_znp_buf[1] = i - 4;
+	m_znp_buf[i] = calc_fcs((uint8_t *) &m_znp_buf[1], (i - 1));
 	i++;
 
-	if (write(znp_buf, i) < 0) {
+	if (write(m_znp_buf, i) < 0) {
 		return ZNP_NOT_SUCCESS;
 	}
 	return waiting_for_status(ZDO_STATE_CHANGE_IND, 0x09);
@@ -578,25 +576,25 @@ uint8_t zb_znp::set_callbacks(uint8_t cb) {
 		return ZNP_NOT_SUCCESS;
 	}
 	int8_t i = 0;
-	znp_buf[i] = ZNP_SOF;
+	m_znp_buf[i] = ZNP_SOF;
 	i++;
-	znp_buf[i] = 0;
+	m_znp_buf[i] = 0;
 	i++;
-	znp_buf[i] = MSB(ZB_WRITE_CONFIGURATION);
+	m_znp_buf[i] = MSB(ZB_WRITE_CONFIGURATION);
 	i++;
-	znp_buf[i] = LSB(ZB_WRITE_CONFIGURATION);
+	m_znp_buf[i] = LSB(ZB_WRITE_CONFIGURATION);
 	i++;
-	znp_buf[i] = ZCD_NV_ZDO_DIRECT_CB;
+	m_znp_buf[i] = ZCD_NV_ZDO_DIRECT_CB;
 	i++;
-	znp_buf[i] = ZCD_NV_ZDO_DIRECT_CB_LEN;
+	m_znp_buf[i] = ZCD_NV_ZDO_DIRECT_CB_LEN;
 	i++;
-	znp_buf[i] = cb;
+	m_znp_buf[i] = cb;
 	i++;
-	znp_buf[1] = i - 4;
-	znp_buf[i] = calc_fcs((uint8_t *) &znp_buf[1], (i - 1));
+	m_znp_buf[1] = i - 4;
+	m_znp_buf[i] = calc_fcs((uint8_t *) &m_znp_buf[1], (i - 1));
 	i++;
 
-	if (write(znp_buf, i) < 0) {
+	if (write(m_znp_buf, i) < 0) {
 		return ZNP_NOT_SUCCESS;
 	}
 	return waiting_for_message(ZB_WRITE_CONFIGURATION | 0x6000);
@@ -606,9 +604,6 @@ uint8_t  zb_znp::start_coordinator(uint8_t opt) {
 	uint8_t znpResult;
 	uint8_t rx_buffer[RX_BUFFER_SIZE];
 	int rx_read_len;
-
-	/* setup uart interface */
-	znp_serial.begin(115200);
 
 	//Serial.print("start_coordinator\n");
 	znpResult = soft_reset();
@@ -752,9 +747,6 @@ uint8_t  zb_znp::start_coordinator(uint8_t opt) {
 uint8_t  zb_znp::start_router() {
 	uint8_t znpResult;
 
-	/* setup uart interface */
-	znp_serial.begin(115200);
-
 	//Serial.print("start_router\n");
 	znpResult = set_startup_options(DEFAULT_STARTUP_OPTIONS);
 	if (znpResult != ZNP_SUCCESS) {
@@ -826,21 +818,21 @@ uint8_t  zb_znp::start_router() {
 uint8_t zb_znp::bdb_start_commissioning(uint8_t mode_config, uint8_t mode_receiving, uint8_t flag_waiting) {
 	(void)mode_receiving;
 	int8_t i = 0;
-	znp_buf[i] = ZNP_SOF;
+	m_znp_buf[i] = ZNP_SOF;
 	i++;
-	znp_buf[i] = 0;
+	m_znp_buf[i] = 0;
 	i++;
-	znp_buf[i] = MSB(APP_CNF_BDB_START_COMMISSIONING);
+	m_znp_buf[i] = MSB(APP_CNF_BDB_START_COMMISSIONING);
 	i++;
-	znp_buf[i] = LSB(APP_CNF_BDB_START_COMMISSIONING);
+	m_znp_buf[i] = LSB(APP_CNF_BDB_START_COMMISSIONING);
 	i++;
-	znp_buf[i] = mode_config;
+	m_znp_buf[i] = mode_config;
 	i++;
-	znp_buf[1] = i - 4;
-	znp_buf[i] = calc_fcs((uint8_t *) &znp_buf[1], (i - 1));
+	m_znp_buf[1] = i - 4;
+	m_znp_buf[i] = calc_fcs((uint8_t *) &m_znp_buf[1], (i - 1));
 	i++;
 
-	if (write(znp_buf, i) < 0) {
+	if (write(m_znp_buf, i) < 0) {
 		return ZNP_NOT_SUCCESS;
 	}
 
@@ -852,19 +844,19 @@ uint8_t zb_znp::bdb_start_commissioning(uint8_t mode_config, uint8_t mode_receiv
 
 uint8_t zb_znp::util_get_device_info() {
 	int8_t i = 0;
-	znp_buf[i] = ZNP_SOF;
+	m_znp_buf[i] = ZNP_SOF;
 	i++;
-	znp_buf[i] = 0;
+	m_znp_buf[i] = 0;
 	i++;
-	znp_buf[i] = MSB(UTIL_GET_DEVICE_INFO);
+	m_znp_buf[i] = MSB(UTIL_GET_DEVICE_INFO);
 	i++;
-	znp_buf[i] = LSB(UTIL_GET_DEVICE_INFO);
+	m_znp_buf[i] = LSB(UTIL_GET_DEVICE_INFO);
 	i++;
-	znp_buf[1] = i - 4;
-	znp_buf[i] = calc_fcs((uint8_t *) &znp_buf[1], (i - 1));
+	m_znp_buf[1] = i - 4;
+	m_znp_buf[i] = calc_fcs((uint8_t *) &m_znp_buf[1], (i - 1));
 	i++;
 
-	if (write(znp_buf, i) < 0) {
+	if (write(m_znp_buf, i) < 0) {
 		return ZNP_NOT_SUCCESS;
 	}
 
@@ -873,28 +865,28 @@ uint8_t zb_znp::util_get_device_info() {
 
 uint8_t zb_znp::zdo_mgmt_leave_req(uint16_t short_add, uint8_t ieee_addr[8], uint8_t flags) {
 	int8_t i = 0;
-	znp_buf[i] = ZNP_SOF;
+	m_znp_buf[i] = ZNP_SOF;
 	i++;
-	znp_buf[i] = 0;
+	m_znp_buf[i] = 0;
 	i++;
-	znp_buf[i] = MSB(ZDO_MGMT_LEAVE_REQ);
+	m_znp_buf[i] = MSB(ZDO_MGMT_LEAVE_REQ);
 	i++;
-	znp_buf[i] = LSB(ZDO_MGMT_LEAVE_REQ);
+	m_znp_buf[i] = LSB(ZDO_MGMT_LEAVE_REQ);
 	i++;
-	znp_buf[i] = LSB(short_add);
+	m_znp_buf[i] = LSB(short_add);
 	i++;
-	znp_buf[i] = MSB(short_add);
+	m_znp_buf[i] = MSB(short_add);
 	i++;
-	memcpy((uint8_t*) &znp_buf[i], ieee_addr, 8);
+	memcpy((uint8_t*) &m_znp_buf[i], ieee_addr, 8);
 	i += 8;
-	znp_buf[i] = flags;
+	m_znp_buf[i] = flags;
 	i++;
 
-	znp_buf[1] = i - 4;
-	znp_buf[i] = calc_fcs((uint8_t *) &znp_buf[1], (i - 1));
+	m_znp_buf[1] = i - 4;
+	m_znp_buf[i] = calc_fcs((uint8_t *) &m_znp_buf[1], (i - 1));
 	i++;
 
-	if (write(znp_buf, i) < 0) {
+	if (write(m_znp_buf, i) < 0) {
 		return ZNP_NOT_SUCCESS;
 	}
 
@@ -903,25 +895,25 @@ uint8_t zb_znp::zdo_mgmt_leave_req(uint16_t short_add, uint8_t ieee_addr[8], uin
 
 uint8_t zb_znp::set_permit_joining_req(uint16_t short_addr, uint8_t timeout, uint8_t flag_waiting) {
 	int8_t i = 0;
-	znp_buf[i] = ZNP_SOF;
+	m_znp_buf[i] = ZNP_SOF;
 	i++;
-	znp_buf[i] = 0;
+	m_znp_buf[i] = 0;
 	i++;
-	znp_buf[i] = MSB(ZB_PERMIT_JOINING_REQUEST);
+	m_znp_buf[i] = MSB(ZB_PERMIT_JOINING_REQUEST);
 	i++;
-	znp_buf[i] = LSB(ZB_PERMIT_JOINING_REQUEST);
+	m_znp_buf[i] = LSB(ZB_PERMIT_JOINING_REQUEST);
 	i++;
-	znp_buf[i] = LSB(short_addr);
+	m_znp_buf[i] = LSB(short_addr);
 	i++;
-	znp_buf[i] = MSB(short_addr);
+	m_znp_buf[i] = MSB(short_addr);
 	i++;
-	znp_buf[i] = timeout;
+	m_znp_buf[i] = timeout;
 	i++;
-	znp_buf[1] = i - 4;
-	znp_buf[i] = calc_fcs((uint8_t *) &znp_buf[1], (i - 1));
+	m_znp_buf[1] = i - 4;
+	m_znp_buf[i] = calc_fcs((uint8_t *) &m_znp_buf[1], (i - 1));
 	i++;
 
-	if (write(znp_buf, i) < 0) {
+	if (write(m_znp_buf, i) < 0) {
 		return ZNP_NOT_SUCCESS;
 	}
 
@@ -934,27 +926,27 @@ uint8_t zb_znp::set_permit_joining_req(uint16_t short_addr, uint8_t timeout, uin
 
 uint8_t zb_znp::get_mac_addr_req(uint16_t short_addr, uint8_t req_type, uint8_t start_index) {
 	int8_t i = 0;
-	znp_buf[i] = ZNP_SOF;
+	m_znp_buf[i] = ZNP_SOF;
 	i++;
-	znp_buf[i] = 0;
+	m_znp_buf[i] = 0;
 	i++;
-	znp_buf[i] = MSB(ZDO_IEEE_ADDR_REQ);
+	m_znp_buf[i] = MSB(ZDO_IEEE_ADDR_REQ);
 	i++;
-	znp_buf[i] = LSB(ZDO_IEEE_ADDR_REQ);
+	m_znp_buf[i] = LSB(ZDO_IEEE_ADDR_REQ);
 	i++;
-	znp_buf[i] = LSB(short_addr);
+	m_znp_buf[i] = LSB(short_addr);
 	i++;
-	znp_buf[i] = MSB(short_addr);
+	m_znp_buf[i] = MSB(short_addr);
 	i++;
-	znp_buf[i] = req_type;
+	m_znp_buf[i] = req_type;
 	i++;
-	znp_buf[i] = start_index;
+	m_znp_buf[i] = start_index;
 	i++;
-	znp_buf[1] = i - 4;
-	znp_buf[i] = calc_fcs((uint8_t *) &znp_buf[1], (i - 1));
+	m_znp_buf[1] = i - 4;
+	m_znp_buf[i] = calc_fcs((uint8_t *) &m_znp_buf[1], (i - 1));
 	i++;
 
-	if (write(znp_buf, i) < 0) {
+	if (write(m_znp_buf, i) < 0) {
 		return ZNP_NOT_SUCCESS;
 	}
 
@@ -963,46 +955,46 @@ uint8_t zb_znp::get_mac_addr_req(uint16_t short_addr, uint8_t req_type, uint8_t 
 
 uint8_t zb_znp::send_af_data_req(af_data_request_t af_data_request) {
 	int32_t i = 0;
-	znp_buf[i] = ZNP_SOF;
+	m_znp_buf[i] = ZNP_SOF;
 	i++;
-	znp_buf[i] = 0;
+	m_znp_buf[i] = 0;
 	i++;
-	znp_buf[i] = MSB(AF_DATA_REQUEST);
+	m_znp_buf[i] = MSB(AF_DATA_REQUEST);
 	i++;
-	znp_buf[i] = LSB(AF_DATA_REQUEST);
+	m_znp_buf[i] = LSB(AF_DATA_REQUEST);
 	i++;
-	znp_buf[i] = LSB(af_data_request.dst_address);
+	m_znp_buf[i] = LSB(af_data_request.dst_address);
 	i++;
-	znp_buf[i] = MSB(af_data_request.dst_address);
+	m_znp_buf[i] = MSB(af_data_request.dst_address);
 	i++;
-	znp_buf[i] = af_data_request.dst_endpoint;
+	m_znp_buf[i] = af_data_request.dst_endpoint;
 	i++;
-	znp_buf[i] = af_data_request.src_endpoint;
+	m_znp_buf[i] = af_data_request.src_endpoint;
 	i++;
-	znp_buf[i] = MSB(af_data_request.cluster_id);
+	m_znp_buf[i] = MSB(af_data_request.cluster_id);
 	i++;
-	znp_buf[i] = LSB(af_data_request.cluster_id);
+	m_znp_buf[i] = LSB(af_data_request.cluster_id);
 	i++;
-	znp_buf[i] = af_data_request.trans_id;
+	m_znp_buf[i] = af_data_request.trans_id;
 	i++;
-	znp_buf[i] = af_data_request.options;
+	m_znp_buf[i] = af_data_request.options;
 	i++;
-	znp_buf[i] = af_data_request.radius;
+	m_znp_buf[i] = af_data_request.radius;
 	i++;
-	znp_buf[i] = af_data_request.len;
+	m_znp_buf[i] = af_data_request.len;
 	i++;
-	memcpy((uint8_t*) &znp_buf[i], af_data_request.data, af_data_request.len);
-	if (znp_buf[i] & 0x04) {
-		znp_buf[i + 3] = get_sequence_send();
+	memcpy((uint8_t*) &m_znp_buf[i], af_data_request.data, af_data_request.len);
+	if (m_znp_buf[i] & 0x04) {
+		m_znp_buf[i + 3] = get_sequence_send();
 	} else {
-		znp_buf[i + 1] = get_sequence_send();
+		m_znp_buf[i + 1] = get_sequence_send();
 	}
 	i += af_data_request.len;
-	znp_buf[1] = i - 4;
-	znp_buf[i] = calc_fcs((uint8_t *) &znp_buf[1], (i - 1));
+	m_znp_buf[1] = i - 4;
+	m_znp_buf[i] = calc_fcs((uint8_t *) &m_znp_buf[1], (i - 1));
 	i++;
 
-	if (write(znp_buf, i) < 0) {
+	if (write(m_znp_buf, i) < 0) {
 		return ZNP_NOT_SUCCESS;
 	}
 
@@ -1014,25 +1006,25 @@ uint8_t zb_znp::set_security_mode(uint8_t security_mode) {
 		return ZNP_NOT_SUCCESS;
 	}
 	int32_t i = 0;
-	znp_buf[i] = ZNP_SOF;
+	m_znp_buf[i] = ZNP_SOF;
 	i++;
-	znp_buf[i] = 0;
+	m_znp_buf[i] = 0;
 	i++;
-	znp_buf[i] = MSB(ZB_WRITE_CONFIGURATION);
+	m_znp_buf[i] = MSB(ZB_WRITE_CONFIGURATION);
 	i++;
-	znp_buf[i] = LSB(ZB_WRITE_CONFIGURATION);
+	m_znp_buf[i] = LSB(ZB_WRITE_CONFIGURATION);
 	i++;
-	znp_buf[i] = ZCD_NV_SECURITY_MODE;
+	m_znp_buf[i] = ZCD_NV_SECURITY_MODE;
 	i++;
-	znp_buf[i] = ZCD_NV_SECURITY_MODE_LEN;
+	m_znp_buf[i] = ZCD_NV_SECURITY_MODE_LEN;
 	i++;
-	znp_buf[i] = (security_mode > 0);
+	m_znp_buf[i] = (security_mode > 0);
 	i++;
-	znp_buf[1] = i - 4;
-	znp_buf[i] = calc_fcs((uint8_t *) &znp_buf[1], (i - 1));
+	m_znp_buf[1] = i - 4;
+	m_znp_buf[i] = calc_fcs((uint8_t *) &m_znp_buf[1], (i - 1));
 	i++;
 
-	if (write(znp_buf, i) < 0) {
+	if (write(m_znp_buf, i) < 0) {
 		return ZNP_NOT_SUCCESS;
 	}
 
@@ -1042,25 +1034,25 @@ uint8_t zb_znp::set_security_mode(uint8_t security_mode) {
 
 	if (security_mode != SECURITY_MODE_OFF) {
 		i = 0;
-		znp_buf[i] = ZNP_SOF;
+		m_znp_buf[i] = ZNP_SOF;
 		i++;
-		znp_buf[i] = 0;
+		m_znp_buf[i] = 0;
 		i++;
-		znp_buf[i] = MSB(ZB_WRITE_CONFIGURATION);
+		m_znp_buf[i] = MSB(ZB_WRITE_CONFIGURATION);
 		i++;
-		znp_buf[i] = LSB(ZB_WRITE_CONFIGURATION);
+		m_znp_buf[i] = LSB(ZB_WRITE_CONFIGURATION);
 		i++;
-		znp_buf[i] = ZCD_NV_PRECFGKEYS_ENABLE;
+		m_znp_buf[i] = ZCD_NV_PRECFGKEYS_ENABLE;
 		i++;
-		znp_buf[i] = ZCD_NV_PRECFGKEYS_ENABLE_LEN;
+		m_znp_buf[i] = ZCD_NV_PRECFGKEYS_ENABLE_LEN;
 		i++;
-		znp_buf[i] = (security_mode == SECURITY_MODE_PRECONFIGURED_KEYS);
+		m_znp_buf[i] = (security_mode == SECURITY_MODE_PRECONFIGURED_KEYS);
 		i++;
-		znp_buf[1] = i - 4;
-		znp_buf[i] = calc_fcs((uint8_t *) &znp_buf[1], (i - 1));
+		m_znp_buf[1] = i - 4;
+		m_znp_buf[i] = calc_fcs((uint8_t *) &m_znp_buf[1], (i - 1));
 		i++;
 
-		if (write(znp_buf, i) < 0) {
+		if (write(m_znp_buf, i) < 0) {
 			return ZNP_NOT_SUCCESS;
 		}
 
@@ -1071,25 +1063,25 @@ uint8_t zb_znp::set_security_mode(uint8_t security_mode) {
 
 uint8_t zb_znp::set_security_key(uint8_t* key) {
 	int32_t i = 0;
-	znp_buf[i] = ZNP_SOF;
+	m_znp_buf[i] = ZNP_SOF;
 	i++;
-	znp_buf[i] = 0;
+	m_znp_buf[i] = 0;
 	i++;
-	znp_buf[i] = MSB(ZB_WRITE_CONFIGURATION);
+	m_znp_buf[i] = MSB(ZB_WRITE_CONFIGURATION);
 	i++;
-	znp_buf[i] = LSB(ZB_WRITE_CONFIGURATION);
+	m_znp_buf[i] = LSB(ZB_WRITE_CONFIGURATION);
 	i++;
-	znp_buf[i] = ZCD_NV_PRECFGKEY;
+	m_znp_buf[i] = ZCD_NV_PRECFGKEY;
 	i++;
-	znp_buf[i] = ZCD_NV_PRECFGKEY_LEN;
+	m_znp_buf[i] = ZCD_NV_PRECFGKEY_LEN;
 	i++;
-	memcpy((uint8_t*) &znp_buf[i], key, ZCD_NV_PRECFGKEY_LEN);
+	memcpy((uint8_t*) &m_znp_buf[i], key, ZCD_NV_PRECFGKEY_LEN);
 	i += ZCD_NV_PRECFGKEY_LEN;
-	znp_buf[1] = i - 4;
-	znp_buf[i] = calc_fcs((uint8_t *) &znp_buf[1], (i - 1));
+	m_znp_buf[1] = i - 4;
+	m_znp_buf[i] = calc_fcs((uint8_t *) &m_znp_buf[1], (i - 1));
 	i++;
 
-	if (write(znp_buf, i) < 0) {
+	if (write(m_znp_buf, i) < 0) {
 		return ZNP_NOT_SUCCESS;
 	}
 
@@ -1098,21 +1090,21 @@ uint8_t zb_znp::set_security_key(uint8_t* key) {
 
 uint8_t zb_znp::zb_get_device_info(uint8_t param, uint8_t* rx_buffer, uint32_t* len) {
 	uint32_t i = 0;
-	znp_buf[i] = ZNP_SOF;
+	m_znp_buf[i] = ZNP_SOF;
 	i++;
-	znp_buf[i] = 0;
+	m_znp_buf[i] = 0;
 	i++;
-	znp_buf[i] = MSB(ZB_GET_DEVICE_INFO);
+	m_znp_buf[i] = MSB(ZB_GET_DEVICE_INFO);
 	i++;
-	znp_buf[i] = LSB(ZB_GET_DEVICE_INFO);
+	m_znp_buf[i] = LSB(ZB_GET_DEVICE_INFO);
 	i++;
-	znp_buf[i] = param;
+	m_znp_buf[i] = param;
 	i++;
-	znp_buf[1] = i - 4;
-	znp_buf[i] = calc_fcs((uint8_t *) &znp_buf[1], (i - 1));
+	m_znp_buf[1] = i - 4;
+	m_znp_buf[i] = calc_fcs((uint8_t *) &m_znp_buf[1], (i - 1));
 	i++;
 
-	if (write(znp_buf, i) < 0) {
+	if (write(m_znp_buf, i) < 0) {
 		return ZNP_NOT_SUCCESS;
 	}
 
@@ -1121,20 +1113,20 @@ uint8_t zb_znp::zb_get_device_info(uint8_t param, uint8_t* rx_buffer, uint32_t* 
 
 uint8_t zb_znp::zb_read_configuration(uint8_t config_id, uint8_t* rx_buffer, uint32_t* len) {
 	int8_t i = 0;
-	znp_buf[i] = ZNP_SOF;
+	m_znp_buf[i] = ZNP_SOF;
 	i++;
-	znp_buf[i] = 0;
+	m_znp_buf[i] = 0;
 	i++;
-	znp_buf[i] = MSB(ZB_READ_CONFIGURATION);
+	m_znp_buf[i] = MSB(ZB_READ_CONFIGURATION);
 	i++;
-	znp_buf[i] = LSB(ZB_READ_CONFIGURATION);
+	m_znp_buf[i] = LSB(ZB_READ_CONFIGURATION);
 	i++;
-	znp_buf[i] = config_id;
+	m_znp_buf[i] = config_id;
 	i++;
-	znp_buf[1] = i - 4;
-	znp_buf[i] = calc_fcs((uint8_t *) &znp_buf[1], (i - 1));
+	m_znp_buf[1] = i - 4;
+	m_znp_buf[i] = calc_fcs((uint8_t *) &m_znp_buf[1], (i - 1));
 	i++;
-	if (write(znp_buf, i) < 0) {
+	if (write(m_znp_buf, i) < 0) {
 		return ZNP_NOT_SUCCESS;
 	}
 
@@ -1143,43 +1135,43 @@ uint8_t zb_znp::zb_read_configuration(uint8_t config_id, uint8_t* rx_buffer, uin
 
 uint8_t zb_znp::zdo_binding_req(binding_req_t binding_req) {
 	int32_t i = 0;
-	znp_buf[i] = ZNP_SOF;
+	m_znp_buf[i] = ZNP_SOF;
 	i++;
-	znp_buf[i] = 0;
+	m_znp_buf[i] = 0;
 	i++;
-	znp_buf[i] = MSB(ZDO_BIND_REQ);
+	m_znp_buf[i] = MSB(ZDO_BIND_REQ);
 	i++;
-	znp_buf[i] = LSB(ZDO_BIND_REQ);
+	m_znp_buf[i] = LSB(ZDO_BIND_REQ);
 	i++;
-	znp_buf[i] = binding_req.src_short_addr[0];
+	m_znp_buf[i] = binding_req.src_short_addr[0];
 	i++;
-	znp_buf[i] = binding_req.src_short_addr[1];
+	m_znp_buf[i] = binding_req.src_short_addr[1];
 	i++;
-	memcpy((uint8_t*) &znp_buf[i], (uint8_t*) binding_req.src_ieee_addr, 8);
+	memcpy((uint8_t*) &m_znp_buf[i], (uint8_t*) binding_req.src_ieee_addr, 8);
 	i += 8;
-	znp_buf[i] = binding_req.src_endpoint;
+	m_znp_buf[i] = binding_req.src_endpoint;
 	i++;
-	znp_buf[i] = LSB(binding_req.cluster_id);
+	m_znp_buf[i] = LSB(binding_req.cluster_id);
 	i++;
-	znp_buf[i] = MSB(binding_req.cluster_id);
+	m_znp_buf[i] = MSB(binding_req.cluster_id);
 	i++;
-	znp_buf[i] = binding_req.dst_mode;
+	m_znp_buf[i] = binding_req.dst_mode;
 	i++;
 	if (binding_req.dst_mode == ADDRESS_64_BIT) {
-		memcpy((uint8_t*) &znp_buf[i], (uint8_t*) binding_req.dst_address, 8);
+		memcpy((uint8_t*) &m_znp_buf[i], (uint8_t*) binding_req.dst_address, 8);
 		i += 8;
 	} else {
-		memcpy((uint8_t*) &znp_buf[i], (uint8_t*) binding_req.dst_address, 2);
+		memcpy((uint8_t*) &m_znp_buf[i], (uint8_t*) binding_req.dst_address, 2);
 		i += 2;
 	}
-	znp_buf[i] = binding_req.dst_endpoint;
+	m_znp_buf[i] = binding_req.dst_endpoint;
 	i++;
 
-	znp_buf[1] = i - 4;
-	znp_buf[i] = calc_fcs((uint8_t *) &znp_buf[1], (i - 1));
+	m_znp_buf[1] = i - 4;
+	m_znp_buf[i] = calc_fcs((uint8_t *) &m_znp_buf[1], (i - 1));
 	i++;
 
-	if (write(znp_buf, i) < 0) {
+	if (write(m_znp_buf, i) < 0) {
 		return ZNP_NOT_SUCCESS;
 	}
 
@@ -1188,29 +1180,29 @@ uint8_t zb_znp::zdo_binding_req(binding_req_t binding_req) {
 
 uint8_t zb_znp::zdo_simple_desc_req(uint16_t dst_addr, uint8_t dst_enpoint) {
 	int32_t i = 0;
-	znp_buf[i] = ZNP_SOF;
+	m_znp_buf[i] = ZNP_SOF;
 	i++;
-	znp_buf[i] = 0;
+	m_znp_buf[i] = 0;
 	i++;
-	znp_buf[i] = MSB(ZDO_SIMPLE_DESC_REQ);
+	m_znp_buf[i] = MSB(ZDO_SIMPLE_DESC_REQ);
 	i++;
-	znp_buf[i] = LSB(ZDO_SIMPLE_DESC_REQ);
+	m_znp_buf[i] = LSB(ZDO_SIMPLE_DESC_REQ);
 	i++;
-	znp_buf[i] = LSB(dst_addr); //dst_addr
+	m_znp_buf[i] = LSB(dst_addr); //dst_addr
 	i++;
-	znp_buf[i] = MSB(dst_addr); // dst_addr
+	m_znp_buf[i] = MSB(dst_addr); // dst_addr
 	i++;
-	znp_buf[i] = LSB(dst_addr); // NWKAddrOfInterest
+	m_znp_buf[i] = LSB(dst_addr); // NWKAddrOfInterest
 	i++;
-	znp_buf[i] = MSB(dst_addr); //NWKAddrOfInterest
+	m_znp_buf[i] = MSB(dst_addr); //NWKAddrOfInterest
 	i++;
-	znp_buf[i] = dst_enpoint;
+	m_znp_buf[i] = dst_enpoint;
 	i++;
-	znp_buf[1] = i - 4;
-	znp_buf[i] = calc_fcs((uint8_t *) &znp_buf[1], (i - 1));
+	m_znp_buf[1] = i - 4;
+	m_znp_buf[i] = calc_fcs((uint8_t *) &m_znp_buf[1], (i - 1));
 	i++;
 
-	if (write(znp_buf, i) < 0) {
+	if (write(m_znp_buf, i) < 0) {
 		return ZNP_NOT_SUCCESS;
 	}
 

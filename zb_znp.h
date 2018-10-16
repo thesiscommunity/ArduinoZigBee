@@ -2,7 +2,7 @@
 #define __ZB_ZNP_H__
 
 #include <stdint.h>
-#include <SoftwareSerial.h>
+#include "Stream.h"
 #include "zb_defs.h"
 
 #define CALLBACKS_DISABLED				0
@@ -210,9 +210,11 @@ typedef struct {
 
 class zb_znp {
 public:
-	zb_znp() {
+	zb_znp(Stream* znpStream) {
 		znp_frame.state = SOP_STATE; //init znp_frame buffer state
+		m_znp_stream = znpStream;
 	}
+
 	~zb_znp() {}
 
 	znp_frame_t znp_frame;
@@ -264,9 +266,10 @@ public:
 
 private:
 #define MAX_LEN_ZNP		150
-	uint8_t znp_buf[MAX_LEN_ZNP];
+	uint8_t m_znp_buf[MAX_LEN_ZNP];
 
-	uint8_t sequence_send;
+	Stream* m_znp_stream;
+	uint8_t m_sequence_send;
 	uint8_t get_sequence_send();
 
 	uint8_t waiting_for_message(uint16_t cmd);

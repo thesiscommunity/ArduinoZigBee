@@ -1,5 +1,6 @@
 #include <zb_znp.h>
 #include <zb_zcl.h>
+#include <SoftwareSerial.h>
 
 /***
  * HƯỚNG DẪN SỬ DỤNG DEMO
@@ -14,7 +15,8 @@
 
 #define DBG_ZB_FRAME
 
-zb_znp zigbee_network;
+SoftwareSerial znp_serial(2, 3);
+zb_znp zigbee_network(&znp_serial);
 
 /* Biến xử lý điều khiển switch */
 uint8_t control_switch_cmd_seq = 0;
@@ -162,6 +164,7 @@ int zb_znp::zigbee_message_handler(zigbee_msg_t& zigbee_msg) {
 
 void setup() {
 	Serial.begin(115200);
+	znp_serial.begin(115200);
 
 	/* Khởi động coodinatior */
 	Serial.println("\nstart_coordinator(0)");
