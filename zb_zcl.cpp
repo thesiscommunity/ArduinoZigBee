@@ -42,7 +42,7 @@
 	(cmd) == ZCL_CMD_REPORT					|| \
 	(cmd) == ZCL_CMD_DEFAULT_RSP ) // exception
 
-static af_incoming_msg_t *rawAFMsg = (af_incoming_msg_t *) NULL;
+static afIncomingMSGPacket_t *rawAFMsg = (afIncomingMSGPacket_t *) NULL;
 
 static void *zclParseInReadRspCmd(zclParseCmd_t *pCmd);
 static void *zclParseInReportCmd(zclParseCmd_t *pCmd);
@@ -281,14 +281,14 @@ uint8_t zclGetDataTypeLength(uint8_t dataType) {
 	return (len);
 }
 
-zclProcMsgStatus_t zcl_ProcessMessageMSG(af_incoming_msg_t *pkt) {
+zclProcMsgStatus_t zcl_ProcessMessageMSG(afIncomingMSGPacket_t *pkt) {
 	zclIncoming_t inMsg;
 
 	if (pkt->len == 0) {
 		return (ZCL_PROC_INVALID);   // Error, ignore the message
 	}
 
-	rawAFMsg = (af_incoming_msg_t *) pkt;
+	rawAFMsg = (afIncomingMSGPacket_t *) pkt;
 	inMsg.msg = pkt;
 	inMsg.attrCmd = NULL;
 	inMsg.pData = NULL;

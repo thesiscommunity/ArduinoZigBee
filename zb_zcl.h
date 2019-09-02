@@ -347,10 +347,11 @@
 
 #define ZCL_CLUSTER_ID_DL( id )       ( (id) == ZCL_CLUSTER_ID_CLOSURES_DOOR_LOCK )
 
+#define Z_EXTADDR_LEN   8
+
 /*********************************************************************
  * TYPEDEFS
  */
-// zcl_ProcessMessageMSG() return codes
 typedef enum
 {
 	ZCL_PROC_SUCCESS = 0,                 // Message was processed
@@ -364,6 +365,52 @@ typedef enum
 	ZCL_PROC_NOT_HANDLED,                 // No default response was sent and the message was not handled
 	ZCL_PROC_NOT_HANDLED_DR,              // default response was sent and the message was not handled
 } zclProcMsgStatus_t;
+
+typedef enum _ZdpStatus {
+	ZDP_STATUS__SUCCESS = 0,
+	ZDP_STATUS__INVALID_REQTYPE = 128,
+	ZDP_STATUS__DEVICE_NOT_FOUND = 129,
+	ZDP_STATUS__INVALID_EP = 130,
+	ZDP_STATUS__NOT_ACTIVE = 131,
+	ZDP_STATUS__NOT_SUPPORTED = 132,
+	ZDP_STATUS__TIMEOUT = 133,
+	ZDP_STATUS__NO_MATCH = 134,
+	ZDP_STATUS__NO_ENTRY = 136,
+	ZDP_STATUS__NO_DESCRIPTOR = 137,
+	ZDP_STATUS__INSUFFICIENT_SPACE = 138,
+	ZDP_STATUS__NOT_PERMITTED = 139,
+	ZDP_STATUS__TABLE_FULL = 140,
+	ZDP_STATUS__NOT_AUTHORIZED = 141,
+	ZDP_STATUS__BINDING_TABLE_FULL = 142
+} ZdpStatus;
+
+typedef struct
+{
+	uint32_t srcaddr;
+	ZdpStatus status;
+} ZdoMgmtPermitJoinRspInd_t;
+
+typedef struct
+{
+	uint16_t nwkAddr;
+	uint8_t  extAddr[Z_EXTADDR_LEN];
+	uint16_t parentAddr;
+} ZDO_TC_Device_t;
+
+typedef struct
+{
+	uint16_t      SrcAddr;
+	uint16_t      nwkAddr;
+	uint8_t       extAddr[Z_EXTADDR_LEN];
+	uint8_t       capabilities;
+} ZDO_DeviceAnnce_t;
+
+typedef struct
+{
+	uint8_t status; // Status is either Success (0) or Failure (1).
+	uint8_t endpoint; // Endpoint of the device
+	uint8_t transID; // Specifies the transaction sequence number of the message
+} afDataConfirm_t;
 
 typedef struct  __attribute__((__packed__))
 {
@@ -379,8 +426,7 @@ typedef struct  __attribute__((__packed__))
 	uint8_t trans_seq_num;
 	uint8_t len;
 	uint8_t payload[128];
-} af_incoming_msg_t;
-
+} afIncomingMSGPacket_t;
 
 // ZCL header - frame control field
 typedef struct
@@ -623,7 +669,7 @@ typedef struct
 // the command record.
 typedef struct
 {
-	af_incoming_msg_t 		*msg;        // incoming message
+	afIncomingMSGPacket_t 		*msg;        // incoming message
 	zclFrameHdr_t     		hdr;         // ZCL header parsed
 	uint8_t                 	*pData;      // pointer to data after header
 	uint16_t                	pDataLen;    // length of remaining data
@@ -673,7 +719,7 @@ typedef struct
 	uint8_t  *pData;
 } zclParseCmd_t;
 
-extern zclProcMsgStatus_t zcl_ProcessMessageMSG( af_incoming_msg_t *pkt );
+extern zclProcMsgStatus_t zcl_ProcessMessageMSG( afIncomingMSGPacket_t *pkt );
 extern uint8_t *zclParseHdr( zclFrameHdr_t *hdr, uint8_t *pData );
 extern uint16_t zclGetAttrDataLength(uint8_t dataType, uint8_t *pData, uint16_t len);
 extern uint8_t zclGetDataTypeLength(uint8_t dataType);

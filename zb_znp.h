@@ -78,6 +78,8 @@
 #define AF_REGISTER 					0x2400
 #define AF_DATA_REQUEST 				0x2401
 #define AF_INCOMING_MSG					0x4481
+#define AF_DATA_CONFIRM					0x4480
+#define AF_DATA_REQUEST_IND 			0x6401
 
 #define ZDO_STARTUP_FROM_APP 			0x2540
 #define ZDO_IEEE_ADDR_REQ 				0x2501
@@ -122,8 +124,8 @@
 #define	COMMISSIONING_MODE_STEERING			0x02
 #define	COMMISSIONING_MODE_INFORMATION		0x04
 
-#define ZNP_SUCCESS							0x00
-#define ZNP_NOT_SUCCESS						0xFF
+#define ZNP_RET_OK							0x00
+#define ZNP_RET_NG							0xFF
 
 #define	DISABLE_PERMIT_JOIN					0x00
 #define	TIME_ENABLE_PERMIT_JOIN				0x3C	//60 seconds
@@ -227,6 +229,7 @@ public:
 	static int zigbee_message_handler(zigbee_msg_t&);
 
 	uint8_t soft_reset();
+	void hard_reset();
 
 	/* (opt = 0)
 	 * to normal start coodinator, and keep configures and joined devices.
@@ -235,8 +238,15 @@ public:
 	 */
 	uint8_t start_coordinator(uint8_t opt);
 
-	/* start router sensor node */
-	uint8_t start_router();
+	/* (opt = 0)
+	 * to normal start router, and keep configures.
+	 * (opt = 1)
+	 * to force start router, reset configures to default.
+	 * (opt = 2)
+	 * to auto start router.
+	 */
+	uint8_t start_router(uint8_t opt);
+
 	uint8_t bdb_start_commissioning(uint8_t mode_config, uint8_t mode_receiving, uint8_t flag_waiting = 0);
 	uint8_t util_get_device_info();
 	uint8_t zdo_mgmt_leave_req(uint16_t short_add, uint8_t ieee_addr[8], uint8_t flags);

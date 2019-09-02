@@ -13,7 +13,7 @@
  *
  */
 
-#define DBG_ZB_FRAME
+//#define DBG_ZB_FRAME
 
 SoftwareSerial znp_serial(2, 3);
 zb_znp zigbee_network(&znp_serial);
@@ -51,8 +51,43 @@ int zb_znp::zigbee_message_handler(zigbee_msg_t& zigbee_msg) {
 	}
 		break;
 
+	case ZDO_MGMT_PERMIT_JOIN_RSP: {
+		Serial.println("ZDO_MGMT_PERMIT_JOIN_RSP");
+		//ZdoMgmtPermitJoinRspInd_t* ZdoMgmtPermitJoinRspInd = (ZdoMgmtPermitJoinRspInd_t*)zigbee_msg.data;
+		//Serial.print("\tsrcaddr: ");
+		//Serial.println(ZdoMgmtPermitJoinRspInd->srcaddr);
+		//Serial.print("\tstatus: ");
+		//Serial.println(ZdoMgmtPermitJoinRspInd->status);
+	}
+		break;
+
+	case ZDO_TC_DEV_IND: {
+		Serial.println("ZDO_TC_DEV_IND");
+	}
+		break;
+
+	case AF_DATA_REQUEST_IND: {
+		Serial.println("AF_DATA_REQUEST_IND");
+		//uint8_t* status = (uint8_t*)zigbee_msg.data;
+		//Serial.print("\tstatus: ");
+		//Serial.println(*status);
+	}
+		break;
+
+	case AF_DATA_CONFIRM: {
+		Serial.println("AF_DATA_CONFIRM");
+		afDataConfirm_t* afDataConfirm = (afDataConfirm_t*)zigbee_msg.data;
+		Serial.print("\tstatus: ");
+		Serial.println(afDataConfirm->status);
+		Serial.print("\tendpoint: ");
+		Serial.println(afDataConfirm->endpoint);
+		Serial.print("\ttransID: ");
+		Serial.println(afDataConfirm->transID);
+	}
+		break;
+
 	case AF_INCOMING_MSG: {
-		af_incoming_msg_t* st_af_incoming_msg = (af_incoming_msg_t*)zigbee_msg.data;
+		afIncomingMSGPacket_t* st_af_incoming_msg = (afIncomingMSGPacket_t*)zigbee_msg.data;
 		Serial.println("AF_INCOMING_MSG");
 
 #if defined (DBG_ZB_FRAME)
@@ -159,6 +194,34 @@ int zb_znp::zigbee_message_handler(zigbee_msg_t& zigbee_msg) {
 		Serial.println("ZDO_MGMT_LEAVE_RSP");
 	}
 		break;
+
+	case ZDO_END_DEVICE_ANNCE_IND: {
+		Serial.println("ZDO_END_DEVICE_ANNCE_IND");
+		ZDO_DeviceAnnce_t* ZDO_DeviceAnnce = (ZDO_DeviceAnnce_t*)zigbee_msg.data;
+		Serial.print("\tSrcAddr: ");
+		Serial.println(ZDO_DeviceAnnce->SrcAddr, HEX);
+		Serial.print("\tnwkAddr: ");
+		Serial.println(ZDO_DeviceAnnce->nwkAddr, HEX);
+		Serial.print("\textAddr: ");
+		for (int i = 0 ; i < Z_EXTADDR_LEN ; i++) {
+			Serial.print(ZDO_DeviceAnnce->extAddr[i], HEX);
+		}
+		Serial.print("\n");
+		/***
+		 * Specifies the MAC capabilities of the device.
+		 * Bit: 0 – Alternate PAN Coordinator
+		 * 1 – Device type: 1- ZigBee Router; 0 – End Device
+		 * 2 – Power Source: 1 Main powered
+		 * 3 – Receiver on when idle
+		 * 4 – Reserved
+		 * 5 – Reserved
+		 * 6 – Security capability
+		 * 7 – Reserved
+		 */
+		Serial.print("\tcapabilities: ");
+		Serial.println(ZDO_DeviceAnnce->capabilities);
+	}
+		break;
 	}
 }
 
@@ -169,10 +232,10 @@ void setup() {
 	/* Khởi động coodinatior */
 	Serial.println("\nstart_coordinator(0)");
 	if (zigbee_network.start_coordinator(0) == 0) {
-		Serial.println("start_coordinator successfully");
+		Serial.println("OK");
 	}
 	else {
-		Serial.println("start_coordinator error");
+		Serial.println("NG");
 	}
 }
 
@@ -193,10 +256,10 @@ void loop() {
 		case '0': {
 			Serial.println("\nstart_coordinator(1)");
 			if (zigbee_network.start_coordinator(1) == 0) {
-				Serial.println("force start coordinator successfully");
+				Serial.println("OK");
 			}
 			else {
-				Serial.println("force start coordinator error");
+				Serial.println("NG");
 			}
 		}
 			break;

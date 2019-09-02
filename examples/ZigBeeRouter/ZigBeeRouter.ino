@@ -36,8 +36,43 @@ int zb_znp::zigbee_message_handler(zigbee_msg_t& zigbee_msg) {
 	}
 		break;
 
+	case ZDO_MGMT_PERMIT_JOIN_RSP: {
+		Serial.println("ZDO_MGMT_PERMIT_JOIN_RSP");
+		ZdoMgmtPermitJoinRspInd_t* ZdoMgmtPermitJoinRspInd = (ZdoMgmtPermitJoinRspInd_t*)zigbee_msg.data;
+		Serial.print("\tsrcaddr: ");
+		Serial.println(ZdoMgmtPermitJoinRspInd->srcaddr);
+		Serial.print("\tstatus: ");
+		Serial.println(ZdoMgmtPermitJoinRspInd->status);
+	}
+		break;
+
+	case ZDO_TC_DEV_IND: {
+		Serial.println("ZDO_TC_DEV_IND");
+	}
+		break;
+
+	case AF_DATA_REQUEST_IND: {
+		Serial.println("AF_DATA_REQUEST_IND");
+		uint8_t* status = (uint8_t*)zigbee_msg.data;
+		Serial.print("\tstatus: ");
+		Serial.println(*status);
+	}
+		break;
+
+	case AF_DATA_CONFIRM: {
+		Serial.println("AF_DATA_CONFIRM");
+		afDataConfirm_t* afDataConfirm = (afDataConfirm_t*)zigbee_msg.data;
+		Serial.print("\tstatus: ");
+		Serial.println(afDataConfirm->status);
+		Serial.print("\tendpoint: ");
+		Serial.println(afDataConfirm->endpoint);
+		Serial.print("\ttransID: ");
+		Serial.println(afDataConfirm->transID);
+	}
+		break;
+
 	case AF_INCOMING_MSG: {
-		af_incoming_msg_t* st_af_incoming_msg = (af_incoming_msg_t*)zigbee_msg.data;
+		afIncomingMSGPacket_t* st_af_incoming_msg = (afIncomingMSGPacket_t*)zigbee_msg.data;
 		Serial.println("AF_INCOMING_MSG");
 
 #if defined (DBG_ZB_FRAME)
@@ -103,7 +138,14 @@ void setup() {
 
 	/* Khởi động router */
 	Serial.println("\nstart_router");
-	if (zigbee_network.start_router() == 0) {
+	/* (opt = 0)
+	 * to normal start router, and keep configures.
+	 * (opt = 1)
+	 * to force start router, reset configures to default.
+	 * (opt = 2)
+	 * to auto start router.
+	 */
+	if (zigbee_network.start_router(2) == 0) {
 		Serial.println("start router successfully");
 	}
 	else {

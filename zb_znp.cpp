@@ -83,7 +83,7 @@ uint8_t zb_znp::set_tc_require_key_exchange(uint8_t bdb_trust_center_require_key
 	i++;
 
 	if (write(m_znp_buf, i) < 0) {
-		return ZNP_NOT_SUCCESS;
+		return ZNP_RET_NG;
 	}
 
 	return waiting_for_message(APP_CNF_BDB_SET_TC_REQUIRE_KEY_EXCHANGE_SRSP);
@@ -203,7 +203,7 @@ uint8_t zb_znp::waiting_for_message(uint16_t cmd) {
 		retry_time--;
 	}
 	znp_frame.zigbee_msg_denied_handle = 0;
-	return ZNP_NOT_SUCCESS;
+	return ZNP_RET_NG;
 }
 
 uint8_t zb_znp::waiting_for_status(uint16_t cmd, uint8_t status) {
@@ -223,7 +223,7 @@ uint8_t zb_znp::waiting_for_status(uint16_t cmd, uint8_t status) {
 		retry_time--;
 	}
 	znp_frame.zigbee_msg_denied_handle = 0;
-	return ZNP_NOT_SUCCESS;
+	return ZNP_RET_NG;
 }
 
 uint8_t zb_znp::get_msg_return(uint16_t cmd, uint8_t status, uint8_t* rx_buffer, uint32_t* len) {
@@ -239,13 +239,13 @@ uint8_t zb_znp::get_msg_return(uint16_t cmd, uint8_t status, uint8_t* rx_buffer,
 				*len = znp_frame.zigbee_msg.len;
 
 				znp_frame.zigbee_msg_denied_handle = 0;
-				return ZNP_SUCCESS;
+				return ZNP_RET_OK;
 			}
 		}
 		retry_time--;
 	}
 	znp_frame.zigbee_msg_denied_handle = 0;
-	return ZNP_NOT_SUCCESS;
+	return ZNP_RET_NG;
 }
 
 uint8_t zb_znp::calc_fcs(uint8_t* msg, uint8_t len) {
@@ -272,7 +272,7 @@ uint8_t zb_znp::app_cnf_set_allowrejoin_tc_policy(uint8_t mode) {
 	m_znp_buf[i] = calc_fcs((uint8_t *) &m_znp_buf[1], (i - 1));
 	i++;
 	if (write(m_znp_buf, i) < 0) {
-		return ZNP_NOT_SUCCESS;
+		return ZNP_RET_NG;
 	}
 
 	return waiting_for_message(APP_CNF_SET_ALLOWREJOIN_TC_POLICY | 0x6000);
@@ -297,15 +297,19 @@ uint8_t zb_znp::soft_reset() {
 	i++;
 
 	if (write(m_znp_buf, i) < 0) {
-		return ZNP_NOT_SUCCESS;
+		return ZNP_RET_NG;
 	}
 	return waiting_for_message(SYS_RESET_IND);
+}
+
+void zb_znp::hard_reset() {
+
 }
 
 uint8_t zb_znp::set_startup_options(uint8_t opt) {
 	int8_t i = 0;
 	if (opt > (STARTOPT_CLEAR_CONFIG + STARTOPT_CLEAR_STATE)) {
-		return ZNP_NOT_SUCCESS;
+		return ZNP_RET_NG;
 	}
 
 	m_znp_buf[i] = ZNP_SOF;
@@ -328,7 +332,7 @@ uint8_t zb_znp::set_startup_options(uint8_t opt) {
 	i++;
 
 	if (write(m_znp_buf, i) < 0) {
-		return ZNP_NOT_SUCCESS;
+		return ZNP_RET_NG;
 	}
 
 	return waiting_for_message(ZB_WRITE_CONFIGURATION | 0x6000);
@@ -356,7 +360,7 @@ uint8_t zb_znp::set_panid(uint16_t pan_id) {
 	m_znp_buf[i] = calc_fcs((uint8_t *) &m_znp_buf[1], (i - 1));
 	i++;
 	if (write(m_znp_buf, i) < 0) {
-		return ZNP_NOT_SUCCESS;
+		return ZNP_RET_NG;
 	}
 	return waiting_for_message(ZB_WRITE_CONFIGURATION | 0x6000);
 }
@@ -364,7 +368,7 @@ uint8_t zb_znp::set_panid(uint16_t pan_id) {
 uint8_t zb_znp::set_zigbee_device_type(uint8_t dev_type) {
 	uint8_t i = 0;
 	if (dev_type > END_DEVICE) {
-		return ZNP_NOT_SUCCESS;
+		return ZNP_RET_NG;
 	}
 	m_znp_buf[i] = ZNP_SOF;
 	i++;
@@ -385,7 +389,7 @@ uint8_t zb_znp::set_zigbee_device_type(uint8_t dev_type) {
 	m_znp_buf[i] = calc_fcs((uint8_t *) &m_znp_buf[1], (i - 1));
 	i++;
 	if (write(m_znp_buf, i) < 0) {
-		return ZNP_NOT_SUCCESS;
+		return ZNP_RET_NG;
 	}
 
 	return waiting_for_message(ZB_WRITE_CONFIGURATION | 0x6000);
@@ -407,14 +411,14 @@ uint8_t zb_znp::set_transmit_power(uint8_t tx_power_db) {
 	m_znp_buf[i] = calc_fcs((uint8_t *) &m_znp_buf[1], (i - 1));
 	i++;
 	if (write(m_znp_buf, i) < 0) {
-		return ZNP_NOT_SUCCESS;
+		return ZNP_RET_NG;
 	}
 
 	uint8_t znpresult = waiting_for_message(SYS_SET_TX_POWER | 0x6000);
 	if (znpresult == tx_power_db) {
-		return ZNP_SUCCESS;
+		return ZNP_RET_OK;
 	}
-	return ZNP_NOT_SUCCESS;
+	return ZNP_RET_NG;
 }
 
 uint8_t zb_znp::set_channel_mask(uint8_t primary, uint32_t channelmask) {
@@ -443,7 +447,7 @@ uint8_t zb_znp::set_channel_mask(uint8_t primary, uint32_t channelmask) {
 	i++;
 
 	if (write(m_znp_buf, i) < 0) {
-		return ZNP_NOT_SUCCESS;
+		return ZNP_RET_NG;
 	}
 
 	return waiting_for_message(APP_CNF_BDB_SET_CHANNEL | 0x6000);
@@ -482,7 +486,7 @@ uint8_t zb_znp::af_register_generic_application(uint8_t endpoint) {
 	i++;
 
 	if (write(m_znp_buf, i) < 0) {
-		return ZNP_NOT_SUCCESS;
+		return ZNP_RET_NG;
 	}
 
 	return waiting_for_message(AF_REGISTER | 0x6000);
@@ -522,7 +526,7 @@ uint8_t zb_znp::zb_app_register_request() {
 	i++;
 
 	if (write(m_znp_buf, i) < 0) {
-		return ZNP_NOT_SUCCESS;
+		return ZNP_RET_NG;
 	}
 
 	return waiting_for_message(ZB_APP_REGISTER_REQUEST | 0x6000);
@@ -543,7 +547,7 @@ uint8_t zb_znp::zb_start_request() {
 	i++;
 
 	if (write(m_znp_buf, i) < 0) {
-		return ZNP_NOT_SUCCESS;
+		return ZNP_RET_NG;
 	}
 
 	return waiting_for_message(ZB_START_CONFIRM);
@@ -566,14 +570,14 @@ uint8_t zb_znp::zdo_start_application() {
 	i++;
 
 	if (write(m_znp_buf, i) < 0) {
-		return ZNP_NOT_SUCCESS;
+		return ZNP_RET_NG;
 	}
 	return waiting_for_status(ZDO_STATE_CHANGE_IND, 0x09);
 }
 
 uint8_t zb_znp::set_callbacks(uint8_t cb) {
 	if ((cb != CALLBACKS_ENABLED) && (cb != CALLBACKS_DISABLED)) {
-		return ZNP_NOT_SUCCESS;
+		return ZNP_RET_NG;
 	}
 	int8_t i = 0;
 	m_znp_buf[i] = ZNP_SOF;
@@ -595,7 +599,7 @@ uint8_t zb_znp::set_callbacks(uint8_t cb) {
 	i++;
 
 	if (write(m_znp_buf, i) < 0) {
-		return ZNP_NOT_SUCCESS;
+		return ZNP_RET_NG;
 	}
 	return waiting_for_message(ZB_WRITE_CONFIGURATION | 0x6000);
 }
@@ -607,7 +611,7 @@ uint8_t  zb_znp::start_coordinator(uint8_t opt) {
 
 	//Serial.print("start_coordinator\n");
 	znpResult = soft_reset();
-	if (znpResult == ZNP_NOT_SUCCESS) {
+	if (znpResult == ZNP_RET_NG) {
 		//Serial.print("ERROR: reset ZNP \n");
 		return znpResult;
 	}
@@ -623,7 +627,7 @@ uint8_t  zb_znp::start_coordinator(uint8_t opt) {
 		for (int i = 1; i < 0x20; i++) {
 			if (i == 0x01 || i == 0x0A) {
 				znpResult = af_register_generic_application(i);
-				if (znpResult != ZNP_SUCCESS) {
+				if (znpResult != ZNP_RET_OK) {
 					//Serial.print("ERROR: af register ");
 					//Serial.print(i);
 					//Serial.print("\n");
@@ -632,35 +636,35 @@ uint8_t  zb_znp::start_coordinator(uint8_t opt) {
 			}
 		}
 		znpResult = bdb_start_commissioning(COMMISSIONING_MODE_STEERING, 1, 0);		// 0x02 is Network Steering
-		if (znpResult != ZNP_SUCCESS) {
+		if (znpResult != ZNP_RET_OK) {
 			//Serial.print("ERROR: Network Steering \n");
 			return znpResult;
 		}
 
 	} else {
 		znpResult = set_startup_options(DEFAULT_STARTUP_OPTIONS);
-		if (znpResult != ZNP_SUCCESS) {
+		if (znpResult != ZNP_RET_OK) {
 			//Serial.print("ERROR: startup option. \n");
 			return znpResult;
 		}
 		//Serial.println("set_startup_options");
 
 		znpResult = soft_reset();
-		if (znpResult == ZNP_NOT_SUCCESS) {
+		if (znpResult == ZNP_RET_NG) {
 			//Serial.print("ERROR: reset ZNP \n");
 			return znpResult;
 		}
 		//Serial.println("soft_reset");
 
 		znpResult = set_panid((uint16_t) PAN_ID);
-		if (znpResult != ZNP_SUCCESS) {
+		if (znpResult != ZNP_RET_OK) {
 			//Serial.print("ERROR: PAN ID \n");
 			return znpResult;
 		}
 		//Serial.println("set_panid");
 
 		znpResult = set_zigbee_device_type(COORDINATOR);
-		if (znpResult != ZNP_SUCCESS) {
+		if (znpResult != ZNP_RET_OK) {
 			//Serial.print("ERROR: Device type \n");
 			return znpResult;
 		}
@@ -668,35 +672,35 @@ uint8_t  zb_znp::start_coordinator(uint8_t opt) {
 
 		//Set primary channel mask & disable secondary channel mask
 		znpResult = set_channel_mask(CHANNEL_TRUE, (uint32_t) DEFAULT_CHANNEL_MASK);
-		if (znpResult != ZNP_SUCCESS) {
+		if (znpResult != ZNP_RET_OK) {
 			//Serial.print("ERROR: set channel mask \n");
 			return znpResult;
 		}
 		//Serial.println("set_channel_mask");
 
 		znpResult = set_channel_mask(CHANNEL_FALSE, (uint32_t) 0);
-		if (znpResult != ZNP_SUCCESS) {
+		if (znpResult != ZNP_RET_OK) {
 			//Serial.print("ERROR: set channel mask \n");
 			return znpResult;
 		}
 		//Serial.println("set_channel_mask");
 
 		znpResult = app_cnf_set_allowrejoin_tc_policy(1);
-		if (znpResult != ZNP_SUCCESS) {
+		if (znpResult != ZNP_RET_OK) {
 			//Serial.print("ERROR: set allow join \n");
 			return znpResult;
 		}
 		//Serial.println("app_cnf_set_allowrejoin_tc_policy");
 
 		znpResult = set_transmit_power(DEFAULT_TX_POWER);
-		if (znpResult != ZNP_SUCCESS) {
+		if (znpResult != ZNP_RET_OK) {
 			//Serial.print("ERROR: set transmit power \n");
 			return znpResult;
 		}
 		//Serial.println("set_transmit_power");
 		// Set ZCD_NV_ZDO_DIRECT_CB
 		znpResult = set_callbacks(CALLBACKS_ENABLED);
-		if (znpResult != ZNP_SUCCESS) {
+		if (znpResult != ZNP_RET_OK) {
 			//Serial.print("ERROR: set callback \n");
 			return znpResult;
 		}
@@ -705,7 +709,7 @@ uint8_t  zb_znp::start_coordinator(uint8_t opt) {
 		for (int i = 1; i < 0x20; i++) {
 			if (i == 0x01 || i == 0x0A) {
 				znpResult = af_register_generic_application(i);
-				if (znpResult != ZNP_SUCCESS) {
+				if (znpResult != ZNP_RET_OK) {
 					//Serial.print("ERROR: af register ");
 					//Serial.print(i);
 					//Serial.print("\n");
@@ -716,7 +720,7 @@ uint8_t  zb_znp::start_coordinator(uint8_t opt) {
 		//Serial.println("af_register_generic_application");
 		// Start commissioning using network formation as parameter to start coordinator
 		znpResult = bdb_start_commissioning(COMMISSIONING_MODE_INFORMATION, 2, 0);		// 0x04 is Network Formation
-		if (znpResult != ZNP_SUCCESS) {
+		if (znpResult != ZNP_RET_OK) {
 			//Serial.print("ERROR: Network Steering \n");
 			return znpResult;
 		}
@@ -724,14 +728,14 @@ uint8_t  zb_znp::start_coordinator(uint8_t opt) {
 	}
 
 	znpResult = set_tc_require_key_exchange(0);
-	if (znpResult != ZNP_SUCCESS) {
+	if (znpResult != ZNP_RET_OK) {
 		//Serial.print("ERROR: set TC key exchange \n");
 		return znpResult;
 	}
 	//Serial.println("set_tc_require_key_exchange");
 
 	znpResult = set_permit_joining_req(SHORT_ADDRESS_COORDINATOR, DISABLE_PERMIT_JOIN, 0);
-	if (znpResult != ZNP_SUCCESS) {
+	if (znpResult != ZNP_RET_OK) {
 		//Serial.print("ERROR: disabled permit join \n");
 		return znpResult;
 	}
@@ -741,78 +745,132 @@ uint8_t  zb_znp::start_coordinator(uint8_t opt) {
 	get_mac_addr_req(SHORT_ADDRESS_COORDINATOR, 0x00, 0x00);
 	//Serial.println("get_mac_addr_req");
 
-	return ZNP_SUCCESS;
+	return ZNP_RET_OK;
 }
 
-uint8_t  zb_znp::start_router() {
-	uint8_t znpResult;
+uint8_t zb_znp::start_router(uint8_t opt) {
+	uint8_t znpCmdExeResult;
+	uint8_t zb_read_configuration_buf[RX_BUFFER_SIZE];
+	int zb_read_configuration_buf_len;
 
-	//Serial.print("start_router\n");
-	znpResult = set_startup_options(DEFAULT_STARTUP_OPTIONS);
-	if (znpResult != ZNP_SUCCESS) {
-		//Serial.print("ERROR: startup option. \n");
-		return znpResult;
+	//Serial.print("start_router()\n");
+
+	hard_reset();
+
+	znpCmdExeResult = soft_reset();
+	if (znpCmdExeResult == ZNP_RET_NG) {
+		Serial.print("[Start Router] ERR: soft_reset()\n");
+		return znpCmdExeResult;
 	}
-	//	Serial.println("set_startup_options");
+	//Serial.print("[Start Router] OK: soft_reset()\n");
 
-	znpResult = soft_reset();
-	if (znpResult == ZNP_NOT_SUCCESS) {
-		//Serial.print("ERROR: reset ZNP \n");
-		return znpResult;
+	znpCmdExeResult = zb_read_configuration(ZCD_NV_PANID, zb_read_configuration_buf, (uint32_t*) &zb_read_configuration_buf_len);
+	if (znpCmdExeResult == ZNP_RET_OK) {
+		//00 83 02 FF FF -> set config
+		//00 83 02 F1 00 -> NOT set config
+		//Serial.print("zb_read_configuration OK !!!\n");
 	}
-	//	Serial.println("soft_reset");
-
-	znpResult = set_zigbee_device_type(ROUTER);
-	if (znpResult != ZNP_SUCCESS) {
-		//Serial.print("ERROR: Device type \n");
-		return znpResult;
+	else {
+		//Serial.print("zb_read_configuration ERR !!!\n");
 	}
-	//	Serial.println("set_zigbee_device_type");
 
-	znpResult = soft_reset();
-	if (znpResult == ZNP_NOT_SUCCESS) {
-		//Serial.print("ERROR: reset ZNP \n");
-		return znpResult;
-	}
-	//	Serial.println("soft_reset");
+	if (opt == 0 || (opt == 2 && zb_read_configuration_buf[3] == 0xF1)) {
+		//Serial.print("Skipping startup option !\n");
 
-	//Set primary channel mask & disable secondary channel mask
-	znpResult = set_channel_mask(CHANNEL_TRUE, (uint32_t) DEFAULT_CHANNEL_MASK);
-	if (znpResult != ZNP_SUCCESS) {
-		//Serial.print("ERROR: set channel mask \n");
-		return znpResult;
-	}
-	//Serial.println("set_channel_mask");
+		znpCmdExeResult = soft_reset();
+		if (znpCmdExeResult == ZNP_RET_NG) {
+			//Serial.print("[Start Router] ERR: soft_reset()\n");
+			return znpCmdExeResult;
+		}
+		//Serial.print("[Start Router] OK: soft_reset()\n");
 
-	znpResult = set_channel_mask(CHANNEL_FALSE, (uint32_t) 0);
-	if (znpResult != ZNP_SUCCESS) {
-		//Serial.print("ERROR: set channel mask \n");
-		return znpResult;
-	}
-	//	Serial.println("set_channel_mask");
-
-	for (int i = 1; i < 0x20; i++) {
-		if (i == 0x01 || i == 0x0A) {
-			znpResult = af_register_generic_application(i);
-			if (znpResult != ZNP_SUCCESS) {
-				//Serial.print("ERROR: af register ");
-				//Serial.print(i);
-				//Serial.print("\n");
-				return znpResult;
+		for (int i = 1; i < 0x20; i++) {
+			if (i == 0x01 || i == 0x0A) {
+				znpCmdExeResult = af_register_generic_application(i);
+				if (znpCmdExeResult != ZNP_RET_OK) {
+					Serial.print("[Start Router] ERR: af_register_generic_application\n");
+					return znpCmdExeResult;
+				}
 			}
 		}
-	}
+		//Serial.print("[Start Router] OK: af_register_generic_application\n");
 
-	//	Serial.println("af_register_generic_application");
-	// Start commissioning using network formation as parameter to start coordinator
-	znpResult = bdb_start_commissioning(COMMISSIONING_MODE_STEERING, 1, 10);		// 0x04 is Network Formation
-	if (znpResult != ZNP_SUCCESS) {
-		Serial.print("ERROR: Network Steering \n");
-		return znpResult;
-	}
-	//	Serial.println("bdb_start_commissioning");
+		znpCmdExeResult = bdb_start_commissioning(COMMISSIONING_MODE_STEERING, 1, 10);		// 0x02 is Network Steering
 
-	return ZNP_SUCCESS;
+		if (znpCmdExeResult != ZNP_RET_OK) {
+			//Serial.print("[Start Router] OK: bdb_start_commissioning\n");
+			return znpCmdExeResult;
+		}
+	}
+	else {
+		znpCmdExeResult = soft_reset();
+		if (znpCmdExeResult == ZNP_RET_NG) {
+			//Serial.print("[Start Coodinator] ERR: soft_reset()\n");
+			return znpCmdExeResult;
+		}
+		//Serial.print("[Start Coodinator] OK: soft_reset()\n");
+
+		znpCmdExeResult = set_startup_options(DEFAULT_STARTUP_OPTIONS);
+		if (znpCmdExeResult != ZNP_RET_OK) {
+			//Serial.print("[Start Router] ERR: set_startup_options(DEFAULT_STARTUP_OPTIONS)\n");
+			return znpCmdExeResult;
+		}
+		//Serial.print("[Start Router] OK: set_startup_options(DEFAULT_STARTUP_OPTIONS)\n");
+
+		znpCmdExeResult = soft_reset();
+		if (znpCmdExeResult == ZNP_RET_NG) {
+			//Serial.print("[Start Router] ERR: set_reset()\n");
+			return znpCmdExeResult;
+		}
+		//Serial.print("[Start Router] OK: set_reset()\n");
+
+		znpCmdExeResult = set_zigbee_device_type(ROUTER);
+		if (znpCmdExeResult != ZNP_RET_OK) {
+			//Serial.print("[Start Router] ERR: set_zigbee_device_type(ROUTER)\n");
+			return znpCmdExeResult;
+		}
+		//Serial.print("[Start Router] OK: set_zigbee_device_type(ROUTER)\n");
+
+		znpCmdExeResult = soft_reset();
+		if (znpCmdExeResult == ZNP_RET_NG) {
+			//Serial.print("[Start Router] ERR: set_reset()\n");
+			return znpCmdExeResult;
+		}
+		//Serial.print("[Start Router] OK: set_reset()\n");
+
+		//Set primary channel mask & disable secondary channel mask
+		znpCmdExeResult = set_channel_mask(CHANNEL_TRUE, (uint32_t) DEFAULT_CHANNEL_MASK);
+		if (znpCmdExeResult != ZNP_RET_OK) {
+			//Serial.print("[Start Router] ERR: set_channel_mask(CHANNEL_TRUE, (uint32_t) DEFAULT_CHANNEL_MASK)\n");
+			return znpCmdExeResult;
+		}
+		//Serial.print("[Start Router] OK: set_channel_mask(CHANNEL_TRUE, (uint32_t) DEFAULT_CHANNEL_MASK)\n");
+
+		znpCmdExeResult = set_channel_mask(CHANNEL_FALSE, (uint32_t) 0);
+		if (znpCmdExeResult != ZNP_RET_OK) {
+			//Serial.print("[Start Router] ERR: set_channel_mask(CHANNEL_FALSE, (uint32_t) 0)\n");
+			return znpCmdExeResult;
+		}
+		//Serial.print("[Start Router] OK: set_channel_mask(CHANNEL_FALSE, (uint32_t) 0)\n");
+
+		for (int i = 1; i < 0x20; i++) {
+			if (i == 0x01 || i == 0x0A) {
+				znpCmdExeResult = af_register_generic_application(i);
+				if (znpCmdExeResult != ZNP_RET_OK) {
+					return znpCmdExeResult;
+				}
+			}
+		}
+		//Serial.print("[Start Router] OK: af_register_generic_application()\n");
+
+		znpCmdExeResult = bdb_start_commissioning(COMMISSIONING_MODE_STEERING, 1, 10);
+		if (znpCmdExeResult != ZNP_RET_OK) {
+			//Serial.print("[Start Router] ERR: bdb_start_commissioning(COMMISSIONING_MODE_STEERING, 1, 10)\n");
+			return znpCmdExeResult;
+		}
+		//Serial.print("[Start Router] OK: bdb_start_commissioning(COMMISSIONING_MODE_STEERING, 1, 10)\n");
+	}
+	return ZNP_RET_OK;
 }
 
 uint8_t zb_znp::bdb_start_commissioning(uint8_t mode_config, uint8_t mode_receiving, uint8_t flag_waiting) {
@@ -833,13 +891,13 @@ uint8_t zb_znp::bdb_start_commissioning(uint8_t mode_config, uint8_t mode_receiv
 	i++;
 
 	if (write(m_znp_buf, i) < 0) {
-		return ZNP_NOT_SUCCESS;
+		return ZNP_RET_NG;
 	}
 
 	if (flag_waiting == 0) {
-		return waiting_for_status(APP_CNF_BDB_COMMISSIONING_NOTIFICATION, ZNP_SUCCESS);
+		return waiting_for_status(APP_CNF_BDB_COMMISSIONING_NOTIFICATION, ZNP_RET_OK);
 	}
-	return ZNP_SUCCESS;
+	return ZNP_RET_OK;
 }
 
 uint8_t zb_znp::util_get_device_info() {
@@ -857,10 +915,10 @@ uint8_t zb_znp::util_get_device_info() {
 	i++;
 
 	if (write(m_znp_buf, i) < 0) {
-		return ZNP_NOT_SUCCESS;
+		return ZNP_RET_NG;
 	}
 
-	return ZNP_SUCCESS;
+	return ZNP_RET_OK;
 }
 
 uint8_t zb_znp::zdo_mgmt_leave_req(uint16_t short_add, uint8_t ieee_addr[8], uint8_t flags) {
@@ -887,10 +945,10 @@ uint8_t zb_znp::zdo_mgmt_leave_req(uint16_t short_add, uint8_t ieee_addr[8], uin
 	i++;
 
 	if (write(m_znp_buf, i) < 0) {
-		return ZNP_NOT_SUCCESS;
+		return ZNP_RET_NG;
 	}
 
-	return ZNP_SUCCESS;
+	return ZNP_RET_OK;
 }
 
 uint8_t zb_znp::set_permit_joining_req(uint16_t short_addr, uint8_t timeout, uint8_t flag_waiting) {
@@ -914,14 +972,14 @@ uint8_t zb_znp::set_permit_joining_req(uint16_t short_addr, uint8_t timeout, uin
 	i++;
 
 	if (write(m_znp_buf, i) < 0) {
-		return ZNP_NOT_SUCCESS;
+		return ZNP_RET_NG;
 	}
 
 	if (flag_waiting == 0) {
 		return waiting_for_message(ZDO_MGMT_PERMIT_JOIN_RSP);
 	}
 
-	return ZNP_SUCCESS;
+	return ZNP_RET_OK;
 }
 
 uint8_t zb_znp::get_mac_addr_req(uint16_t short_addr, uint8_t req_type, uint8_t start_index) {
@@ -947,10 +1005,10 @@ uint8_t zb_znp::get_mac_addr_req(uint16_t short_addr, uint8_t req_type, uint8_t 
 	i++;
 
 	if (write(m_znp_buf, i) < 0) {
-		return ZNP_NOT_SUCCESS;
+		return ZNP_RET_NG;
 	}
 
-	return ZNP_SUCCESS;
+	return ZNP_RET_OK;
 }
 
 uint8_t zb_znp::send_af_data_req(af_data_request_t af_data_request) {
@@ -995,15 +1053,15 @@ uint8_t zb_znp::send_af_data_req(af_data_request_t af_data_request) {
 	i++;
 
 	if (write(m_znp_buf, i) < 0) {
-		return ZNP_NOT_SUCCESS;
+		return ZNP_RET_NG;
 	}
 
-	return ZNP_SUCCESS;
+	return ZNP_RET_OK;
 }
 
 uint8_t zb_znp::set_security_mode(uint8_t security_mode) {
 	if (security_mode > SECURITY_MODE_COORD_DIST_KEYS) {
-		return ZNP_NOT_SUCCESS;
+		return ZNP_RET_NG;
 	}
 	int32_t i = 0;
 	m_znp_buf[i] = ZNP_SOF;
@@ -1025,11 +1083,11 @@ uint8_t zb_znp::set_security_mode(uint8_t security_mode) {
 	i++;
 
 	if (write(m_znp_buf, i) < 0) {
-		return ZNP_NOT_SUCCESS;
+		return ZNP_RET_NG;
 	}
 
-	if (waiting_for_message(ZB_WRITE_CONFIGURATION | 0x6000) == ZNP_NOT_SUCCESS) {
-		return ZNP_NOT_SUCCESS;
+	if (waiting_for_message(ZB_WRITE_CONFIGURATION | 0x6000) == ZNP_RET_NG) {
+		return ZNP_RET_NG;
 	}
 
 	if (security_mode != SECURITY_MODE_OFF) {
@@ -1053,12 +1111,12 @@ uint8_t zb_znp::set_security_mode(uint8_t security_mode) {
 		i++;
 
 		if (write(m_znp_buf, i) < 0) {
-			return ZNP_NOT_SUCCESS;
+			return ZNP_RET_NG;
 		}
 
 		return waiting_for_message(ZB_WRITE_CONFIGURATION | 0x6000);
 	}
-	return ZNP_SUCCESS;
+	return ZNP_RET_OK;
 }
 
 uint8_t zb_znp::set_security_key(uint8_t* key) {
@@ -1082,7 +1140,7 @@ uint8_t zb_znp::set_security_key(uint8_t* key) {
 	i++;
 
 	if (write(m_znp_buf, i) < 0) {
-		return ZNP_NOT_SUCCESS;
+		return ZNP_RET_NG;
 	}
 
 	return waiting_for_message(ZB_WRITE_CONFIGURATION | 0x6000);
@@ -1105,7 +1163,7 @@ uint8_t zb_znp::zb_get_device_info(uint8_t param, uint8_t* rx_buffer, uint32_t* 
 	i++;
 
 	if (write(m_znp_buf, i) < 0) {
-		return ZNP_NOT_SUCCESS;
+		return ZNP_RET_NG;
 	}
 
 	return get_msg_return((ZB_GET_DEVICE_INFO | 0x6000), param, rx_buffer, len);
@@ -1127,10 +1185,10 @@ uint8_t zb_znp::zb_read_configuration(uint8_t config_id, uint8_t* rx_buffer, uin
 	m_znp_buf[i] = calc_fcs((uint8_t *) &m_znp_buf[1], (i - 1));
 	i++;
 	if (write(m_znp_buf, i) < 0) {
-		return ZNP_NOT_SUCCESS;
+		return ZNP_RET_NG;
 	}
 
-	return get_msg_return(ZB_READ_CONFIGURATION_RSP, ZNP_SUCCESS, rx_buffer, len);
+	return get_msg_return(ZB_READ_CONFIGURATION_RSP, ZNP_RET_OK, rx_buffer, len);
 }
 
 uint8_t zb_znp::zdo_binding_req(binding_req_t binding_req) {
@@ -1172,10 +1230,10 @@ uint8_t zb_znp::zdo_binding_req(binding_req_t binding_req) {
 	i++;
 
 	if (write(m_znp_buf, i) < 0) {
-		return ZNP_NOT_SUCCESS;
+		return ZNP_RET_NG;
 	}
 
-	return ZNP_SUCCESS;
+	return ZNP_RET_OK;
 }
 
 uint8_t zb_znp::zdo_simple_desc_req(uint16_t dst_addr, uint8_t dst_enpoint) {
@@ -1203,8 +1261,8 @@ uint8_t zb_znp::zdo_simple_desc_req(uint16_t dst_addr, uint8_t dst_enpoint) {
 	i++;
 
 	if (write(m_znp_buf, i) < 0) {
-		return ZNP_NOT_SUCCESS;
+		return ZNP_RET_NG;
 	}
 
-	return ZNP_SUCCESS;
+	return ZNP_RET_OK;
 }
